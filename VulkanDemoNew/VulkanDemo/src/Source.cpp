@@ -15,6 +15,7 @@
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
 #include "Chunk.h"
+#include "Camera.h"
 
 #include <chrono>
 #include <iostream>
@@ -29,9 +30,10 @@
 #include <fstream>
 #include <array>
 
-const uint32_t WIDTH = 800;
-const uint32_t HEIGHT = 600;
+const uint32_t WIDTH = 1800;
+const uint32_t HEIGHT = 1000;
 const int MAX_FRAMES_IN_FLIGHT = 2;
+const uint32_t DRAW_DISTANCE = 128;
 
 struct UniformBufferObject {
     glm::mat4 model;
@@ -150,6 +152,7 @@ private:
     VkDeviceMemory depthImageMemory;
     VkImageView depthImageView;
     Chunk chunk;
+    Chunk chunk2;
 
 
     void recreateSwapChain() {
@@ -193,21 +196,13 @@ private:
     }
 
     void updateUniformBuffer(uint32_t currentImage) {
-        static auto startTime = std::chrono::high_resolution_clock::now();
-
-        auto currentTime = std::chrono::high_resolution_clock::now();
-        float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
         UniformBufferObject ubo{};
-        if (InputManager::GetKeyState(GLFW_KEY_W) == GLFW_PRESS) {
-            ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        }
-        else {
-            ubo.model = glm::mat4(1.0f);
-        }
-        
-        ubo.view = glm::lookAt(glm::vec3(10.f, time *0.5f, 10.0f), glm::vec3(4.0f, 4.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+        ubo.model = glm::mat4(1.0f);
+        ubo.view = Camera::getViewingMatrix();
         ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 50.0f);
+        ubo.proj[1][1] *= -1;
                 
         memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
@@ -517,7 +512,7 @@ private:
         rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizer.lineWidth = 1.0f;
         rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
         rasterizer.depthBiasEnable = VK_FALSE;
         rasterizer.depthBiasConstantFactor = 0.0f; // Optional
         rasterizer.depthBiasClamp = 0.0f; // Optional
@@ -797,6 +792,7 @@ private:
         window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
         glfwSetWindowUserPointer(window, this);
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
         InputManager::Init(window);
     }
@@ -821,7 +817,8 @@ private:
         createFramebuffers();
         createCommandPool();
         InitTextures();
-        chunk.Init();
+        chunk.Init(0.0f, 0.0f, 0.0f);
+        chunk2.Init(8.0f, 8.0f, 8.0f);
         createVertexBuffer();
         createUniformBuffers();
         createDescriptorPool();
@@ -981,9 +978,24 @@ private:
     }
 
     void MainLoop() {
+        std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
+        std::chrono::duration<float> elapsed;
+        double d = 0.0;
+        int framesCount = 0;
         while (!glfwWindowShouldClose(window)) {
+            start = std::chrono::high_resolution_clock::now();
             InputManager::Poll(window);
             drawFrame();
+            end = std::chrono::high_resolution_clock::now();
+            elapsed = (end - start);
+            Camera::Update(elapsed.count());
+            d += elapsed.count();
+            framesCount++;
+            if (d > std::chrono::seconds(1).count()) {
+                d -= std::chrono::seconds(1).count();
+                std::cout << framesCount << std::endl;
+                framesCount = 0;
+            }
         }
 
         vkDeviceWaitIdle(device);

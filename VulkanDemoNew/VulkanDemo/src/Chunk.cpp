@@ -1,10 +1,10 @@
 #include "Chunk.h"
 
-void Chunk::Init() {
+void Chunk::Init(float posX, float posY, float posZ) {
 
-	pos[0] = 0.0f;
-	pos[1] = 0.0f;
-	pos[2] = 0.0f;
+	pos[0] = posX;
+	pos[1] = posY;
+	pos[2] = posZ;
 
 	for (int i = 0; i < CHUNK_SIZE; i++) {
 		for (int j = 0; j < CHUNK_SIZE; j++) {
@@ -45,17 +45,19 @@ void Chunk::Init() {
 
 void Chunk::pushVertexes(int x, int y, int z, float xnorm, float ynorm, float znorm) {
 
-
+	float xCoord = x + pos[0];
+	float yCoord = y + pos[1];
+	float zCoord = z + pos[2];
 
 
 	int size = vertices.size();
 
 	if (xnorm > 0) {
 		//right
-		Vertex v1{ {1.0f + x, 0.0f + y, 1.0f + z}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f} };
-		Vertex v2{ {1.0f + x, 0.0f + y, 0.0f + z}, {1.0f, 0.0f, 1.0f}, {0.0f, 1.0f} };
-		Vertex v3{ {1.0f + x, 1.0f + y, 0.0f + z}, {1.0f, 0.0f, 1.0f}, {0.0f, 0.0f} };
-		Vertex v4{ {1.0f + x, 1.0f + y, 1.0f + z}, {1.0f, 0.0f, 1.0f}, {1.0f, 0.0f} };
+		Vertex v1{ {1.0f + xCoord, 0.0f + yCoord, 0.0f + zCoord}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f} };
+		Vertex v2{ {1.0f + xCoord, 0.0f + yCoord, 1.0f + zCoord}, {1.0f, 0.0f, 1.0f}, {0.0f, 1.0f} };
+		Vertex v3{ {1.0f + xCoord, 1.0f + yCoord, 1.0f + zCoord}, {1.0f, 0.0f, 1.0f}, {0.0f, 0.0f} };
+		Vertex v4{ {1.0f + xCoord, 1.0f + yCoord, 0.0f + zCoord}, {1.0f, 0.0f, 1.0f}, {1.0f, 0.0f} };
 
 		vertices.push_back(v1);
 		vertices.push_back(v2);
@@ -64,22 +66,10 @@ void Chunk::pushVertexes(int x, int y, int z, float xnorm, float ynorm, float zn
 	}
 	else if (xnorm < 0) {
 		//left
-		Vertex v1{ {0.0f + x, 0.0f + y, 0.0f + z}, {0.0f, 1.0f, 1.0f}, {0.0f, 0.0f} };
-		Vertex v2{ {0.0f + x, 0.0f + y, 1.0f + z}, {0.0f, 1.0f, 1.0f}, {1.0f, 0.0f} };
-		Vertex v3{ {0.0f + x, 1.0f + y, 1.0f + z}, {0.0f, 1.0f, 1.0f}, {1.0f, 1.0f} };
-		Vertex v4{ {0.0f + x, 1.0f + y, 0.0f + z}, {0.0f, 1.0f, 1.0f}, {0.0f, 1.0f} };
-
-		vertices.push_back(v1);
-		vertices.push_back(v2);
-		vertices.push_back(v3);
-		vertices.push_back(v4);
-	}
-	else if (ynorm < 0) {
-		//bottom
-		Vertex v1{ {1.0f + x, 0.0f + y, 1.0f + z}, {1.0f, 1.0f, 0.0f}, {0.0f, 0.0f} };
-		Vertex v2{ {0.0f + x, 0.0f + y, 1.0f + z}, {1.0f, 1.0f, 0.0f}, {1.0f, 0.0f} };
-		Vertex v3{ {0.0f + x, 0.0f + y, 0.0f + z}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f} };
-		Vertex v4{ {1.0f + x, 0.0f + y, 0.0f + z}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f} };
+		Vertex v1{ {0.0f + xCoord, 0.0f + yCoord, 1.0f + zCoord}, {0.0f, 1.0f, 1.0f}, {1.0f, 1.0f} };
+		Vertex v2{ {0.0f + xCoord, 0.0f + yCoord, 0.0f + zCoord}, {0.0f, 1.0f, 1.0f}, {0.0f, 1.0f} };
+		Vertex v3{ {0.0f + xCoord, 1.0f + yCoord, 0.0f + zCoord}, {0.0f, 1.0f, 1.0f}, {0.0f, 0.0f} };
+		Vertex v4{ {0.0f + xCoord, 1.0f + yCoord, 1.0f + zCoord}, {0.0f, 1.0f, 1.0f}, {1.0f, 0.0f} };
 
 		vertices.push_back(v1);
 		vertices.push_back(v2);
@@ -88,10 +78,22 @@ void Chunk::pushVertexes(int x, int y, int z, float xnorm, float ynorm, float zn
 	}
 	else if (ynorm > 0) {
 		//top
-		Vertex v1{ {0.0f + x, 1.0f + y, 1.0f + z}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f} };
-		Vertex v2{ {1.0f + x, 1.0f + y, 1.0f + z}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f} };
-		Vertex v3{ {1.0f + x, 1.0f + y, 0.0f + z}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f} };
-		Vertex v4{ {0.0f + x, 1.0f + y, 0.0f + z}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f} };
+		Vertex v1{ {1.0f + xCoord, 1.0f + yCoord, 1.0f + zCoord}, {1.0f, 1.0f, 0.0f}, {1.0f, 1.0f} };
+		Vertex v2{ {0.0f + xCoord, 1.0f + yCoord, 1.0f + zCoord}, {1.0f, 1.0f, 0.0f}, {0.0f, 1.0f} };
+		Vertex v3{ {0.0f + xCoord, 1.0f + yCoord, 0.0f + zCoord}, {1.0f, 1.0f, 0.0f}, {0.0f, 0.0f} };
+		Vertex v4{ {1.0f + xCoord, 1.0f + yCoord, 0.0f + zCoord}, {1.0f, 1.0f, 0.0f}, {1.0f, 0.0f} };
+
+		vertices.push_back(v1);
+		vertices.push_back(v2);
+		vertices.push_back(v3);
+		vertices.push_back(v4);
+	}
+	else if (ynorm < 0) {
+		//bottom
+		Vertex v1{ {1.0f + xCoord, 0.0f + yCoord, 0.0f + zCoord}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f} };
+		Vertex v2{ {0.0f + xCoord, 0.0f + yCoord, 0.0f + zCoord}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f} };
+		Vertex v3{ {0.0f + xCoord, 0.0f + yCoord, 1.0f + zCoord}, {0.0f, 0.0f, 1.0f}, {0.0f, 0.0f} };
+		Vertex v4{ {1.0f + xCoord, 0.0f + yCoord, 1.0f + zCoord}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f} };
 
 		vertices.push_back(v1);
 		vertices.push_back(v2);
@@ -100,10 +102,10 @@ void Chunk::pushVertexes(int x, int y, int z, float xnorm, float ynorm, float zn
 	}
 	else if (znorm > 0) {
 		//back
-		Vertex v1{ {0.0f + x, 0.0f  + y, 1.0f  + z}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f} };
-		Vertex v2{ {1.0f + x, 0.0f  + y, 1.0f  + z}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} };
-		Vertex v3{ {1.0f + x, 1.0f + y, 1.0f + z}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f} };
-		Vertex v4{ {0.0f + x, 1.0f + y, 1.0f + z}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f} };
+		Vertex v1{ {0.0f + xCoord, 0.0f  + yCoord, 0.0f  + zCoord}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f} };
+		Vertex v2{ {1.0f + xCoord, 0.0f + yCoord, 0.0f + zCoord}, {1.0f, 0.0f, 0.0f},   {0.0f, 1.0f} };
+		Vertex v3{ {1.0f + xCoord, 1.0f + yCoord, 0.0f + zCoord}, {1.0f, 0.0f, 0.0f},   {0.0f, 0.0f} };
+		Vertex v4{ {0.0f + xCoord, 1.0f + yCoord, 0.0f + zCoord}, {1.0f, 0.0f, 0.0f},   {1.0f, 0.0f} };
 
 		vertices.push_back(v1);
 		vertices.push_back(v2);
@@ -112,10 +114,10 @@ void Chunk::pushVertexes(int x, int y, int z, float xnorm, float ynorm, float zn
 	}
 	else if (znorm < 0) {
 		//front
-		Vertex v1{ {1.0f + x, 0.0f  + y, 0.0f  + z}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f} };
-		Vertex v2{ {0.0f + x, 0.0f  + y, 0.0f  + z}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f} };
-		Vertex v3{ {0.0f + x, 1.0f + y, 0.0f + z}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f} };
-		Vertex v4{ {1.0f + x, 1.0f + y, 0.0f + z}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f} };
+		Vertex v1{ {1.0f + xCoord, 0.0f  + yCoord, 1.0f  + zCoord}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f} };
+		Vertex v2{ {0.0f + xCoord, 0.0f + yCoord, 1.0f + zCoord}, {0.0f, 1.0f, 0.0f},   {0.0f, 1.0f} };
+		Vertex v3{ {0.0f + xCoord, 1.0f + yCoord, 1.0f + zCoord}, {0.0f, 1.0f, 0.0f},   {0.0f, 0.0f} };
+		Vertex v4{ {1.0f + xCoord, 1.0f + yCoord, 1.0f + zCoord}, {0.0f, 1.0f, 0.0f},   {1.0f, 0.0f} };
 
 		vertices.push_back(v1);
 		vertices.push_back(v2);

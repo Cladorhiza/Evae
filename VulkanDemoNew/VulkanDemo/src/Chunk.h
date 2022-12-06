@@ -6,7 +6,8 @@
 
 class Chunk
 {
-	static constexpr unsigned CHUNK_SIZE = 8;
+public:
+	static constexpr unsigned CHUNK_SIZE = 16;
 	static const unsigned BLOCK_AIR = 0;
 	static const unsigned BLOCK_SOLID = 1;
 
@@ -20,7 +21,7 @@ private:
 public:
 	inline std::vector<Vertex>& GetVertices() { return vertices; }
 	inline std::vector<uint16_t>& GetIndices() { return indices; }
-	void Init();
+	void Init(float posX, float posY, float posZ);
 	void pushVertexes(int x, int y, int z, float xnorm, float ynorm, float znorm);
 };
 
