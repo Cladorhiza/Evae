@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include "Vertex.h"
+#include "BasicVertex.h"
 #include "glm/gtc/matrix_transform.hpp"
 #include <iostream>
 
@@ -15,11 +15,11 @@ private:
 	unsigned ids[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE];
 	float pos[3];
 	Chunk* neighbours[6];
-	std::vector<Vertex> vertices;
+	std::vector<BasicVertex> vertices;
 	std::vector<uint16_t> indices;
 
 public:
-	inline std::vector<Vertex>& GetVertices() { return vertices; }
+	inline std::vector<BasicVertex>& GetVertices() { return vertices; }
 	inline std::vector<uint16_t>& GetIndices() { return indices; }
 	void Init(float posX, float posY, float posZ);
 	void pushVertexes(int x, int y, int z, float xnorm, float ynorm, float znorm);

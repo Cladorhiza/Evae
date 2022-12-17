@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "VkHelpers.h"
-#include "Vertex.h"
+#include "BasicVertex.h"
 class VertexBuffer
 {
 private:
@@ -16,7 +16,7 @@ private:
 public:
 	inline VkBuffer GetBuffer() { return buffer; }
 	inline VkDeviceMemory GetBufferMemory() { return bufferMemory; }
-	void Init(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, std::vector<Vertex>& vertices);
+	void Init(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, std::vector<BasicVertex>& vertices);
 	void Destroy();
 };
 

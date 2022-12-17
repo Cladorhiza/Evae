@@ -7,10 +7,10 @@ void Terrain::UpdateChunkLoadQueues(glm::vec3 playerPosition, int drawDistance) 
 	glm::vec3 negativeBound(playerPosition.x - drawDistance, playerPosition.y - drawDistance, playerPosition.z - drawDistance);
 
 	//iterate chunks, if chunk index outside bounds, add to unload queue
-	for (const std::pair<glm::vec3, Chunk>& c : loadedChunks) {
-		if (   c.first.x < negativeBound.x && c.first.y < negativeBound.y && c.first.z < negativeBound.z
-			|| c.first.x > positiveBound.x && c.first.y > positiveBound.y && c.first.z > positiveBound.z) {
-			unloadQueue.push(c.first);
+	for (auto& [vec,chunk] : loadedChunks) {
+		if (   vec.x < negativeBound.x && vec.y < negativeBound.y && vec.z < negativeBound.z
+			|| vec.x > positiveBound.x && vec.y > positiveBound.y && vec.z > positiveBound.z) {
+			unloadQueue.push(vec);
 		}
 	}
 	//iterate bounds, if chunk index inside bounds AND chunk not loaded already, add to load queue
@@ -32,7 +32,7 @@ void Terrain::UpdateChunkLoadQueues(glm::vec3 playerPosition, int drawDistance) 
 void Terrain::LoadQueue() {
 	while (!loadQueue.empty()) {
 		glm::vec3 index(loadQueue.front());
-		loadedChunks.emplace(index);
+		loadedChunks[index] = Chunk{};
 		loadedChunks[index].Init(index.x * 16, index.y * 16, index.z * 16);
 		//still doesn't link nearby chunks
 		//still doesn't construct vbo/ibo or store any of them
