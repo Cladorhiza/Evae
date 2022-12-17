@@ -11,6 +11,7 @@ namespace InputManager {
 		GLFW_KEY_D,
 		GLFW_KEY_Q,
 		GLFW_KEY_E,
+		GLFW_KEY_T,
 		GLFW_KEY_ESCAPE,
 		GLFW_KEY_RIGHT,
 		GLFW_KEY_LEFT,
@@ -57,7 +58,7 @@ namespace InputManager {
 	int GetKeyState(int GLFWKeyCode) {
 		return keys[GLFWKeyCode];
 	}
-	int GetKeyToggle(int GLFWKeyCode) {
+	bool GetKeyToggle(int GLFWKeyCode) {
 		return keyToggle[GLFWKeyCode];
 	}
 	float GetMouseX() { return (float)cursorXPos; }

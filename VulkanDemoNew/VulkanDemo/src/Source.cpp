@@ -54,6 +54,8 @@ struct UniformBufferObject {
     0,1,2
 };
 
+ static bool textured = true;
+
 const std::vector<const char*> validationLayers = {
     "VK_LAYER_KHRONOS_validation"
 };
@@ -125,6 +127,7 @@ private:
     VkRenderPass renderPass;
     VkDescriptorSetLayout descriptorSetLayout;
     GraphicsPipeline graphicsPipeline;
+    GraphicsPipeline graphicsPipeline2;
     VkCommandPool commandPool;
     std::vector<VkCommandBuffer> commandBuffers;
     std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -283,7 +286,16 @@ private:
         scissor.extent = swapChain.GetExtent();
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline.GetPipeline());
+        
+        if (InputManager::GetKeyToggle(GLFW_KEY_T)){
+            textured = !textured;
+        }
+        if (textured) {
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline.GetPipeline());
+        }
+        else {
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline2.GetPipeline());
+        }
 
         VkBuffer vertexBuffers[] = { vertexBuffer.GetBuffer() };
         VkDeviceSize offsets[] = { 0 };
@@ -389,6 +401,9 @@ private:
         graphicsPipeline.AddShaderRaw(VK_SHADER_STAGE_FRAGMENT_BIT, Utilities::readFile("res/shaders/frag.spv"));
         BasicVertex v;
         graphicsPipeline.Init(device, renderPass, descriptorSetLayout, &v);
+        graphicsPipeline2.AddShaderRaw(VK_SHADER_STAGE_VERTEX_BIT, Utilities::readFile("res/shaders/vert2.spv"));
+        graphicsPipeline2.AddShaderRaw(VK_SHADER_STAGE_FRAGMENT_BIT, Utilities::readFile("res/shaders/frag2.spv"));
+        graphicsPipeline2.Init(device, renderPass, descriptorSetLayout, &v);
     }
 
     void setupDebugMessenger() {
@@ -678,6 +693,7 @@ private:
 
         vkDestroyCommandPool(device, commandPool, nullptr);
         graphicsPipeline.Destroy();
+        graphicsPipeline2.Destroy();
 
         vkDestroyRenderPass(device, renderPass, nullptr);
         
