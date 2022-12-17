@@ -18,6 +18,8 @@ private:
 
 
 public:
+
+	GraphicsPipeline();
 	inline VkPipeline GetPipeline() { return graphicsPipeline; }
 	inline VkPipelineLayout GetPipelineLayout() { return pipelineLayout; }
 

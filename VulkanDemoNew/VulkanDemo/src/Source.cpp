@@ -15,6 +15,7 @@
 #include "BasicVertex.h"
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
+#include "UniformBuffer.h"
 #include "Camera.h"
 #include "Utilities.h"
 #include "GraphicsPipeline.h"
@@ -38,11 +39,15 @@ const uint32_t HEIGHT = 1000;
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const uint32_t DRAW_DISTANCE = 128;
 
+
+
 struct UniformBufferObject {
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 proj;
 };
+
+constexpr uint32_t UBO_MVP_SIZE = sizeof(UniformBufferObject);
 
  std::vector<BasicVertex> vertexes{
     {{1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
@@ -115,34 +120,38 @@ public:
     }
 
 private:
+    //application specific
     GLFWwindow* window;
-    VkInstance instance;
-    VkDebugUtilsMessengerEXT debugMessenger;
+    VkInstance instance = VK_NULL_HANDLE;
+    VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    VkDevice device;
-    VkQueue graphicsQueue;
-    VkQueue presentQueue;
-    SwapChain swapChain;
+    VkDevice device = VK_NULL_HANDLE;
+    VkQueue graphicsQueue = VK_NULL_HANDLE;
+    VkQueue presentQueue = VK_NULL_HANDLE;
+    VkRenderPass renderPass = VK_NULL_HANDLE;
 
-    VkRenderPass renderPass;
-    VkDescriptorSetLayout descriptorSetLayout;
-    GraphicsPipeline graphicsPipeline;
-    GraphicsPipeline graphicsPipeline2;
-    VkCommandPool commandPool;
-    std::vector<VkCommandBuffer> commandBuffers;
+    //sync objects
     std::vector<VkSemaphore> imageAvailableSemaphores;
     std::vector<VkSemaphore> renderFinishedSemaphores;
     std::vector<VkFence> inFlightFences;
-    uint32_t currentFrame = 0;
-    bool framebufferResized = false;
+
+    //refactored
+    SwapChain swapChain;
+    GraphicsPipeline graphicsPipeline;
+    GraphicsPipeline graphicsPipeline2;
+    Texture2D tex;
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
-    std::vector<VkBuffer> uniformBuffers;
-    std::vector<VkDeviceMemory> uniformBuffersMemory;
-    std::vector<void*> uniformBuffersMapped;
-    VkDescriptorPool descriptorPool;
+    std::vector<UniformBuffer> uniformBuffersMVP;
+    
+    //needs refactoring
+    VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
+    VkCommandPool commandPool = VK_NULL_HANDLE;
+    std::vector<VkCommandBuffer> commandBuffers;
+    bool framebufferResized = false;
+    uint32_t currentFrame = 0;
+    VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> descriptorSets;
-    Texture2D tex;
 
     void createSyncObjects() {
         imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -175,7 +184,7 @@ private:
         ubo.proj = glm::perspective(glm::radians(45.0f), swapChain.GetExtent().width / (float)swapChain.GetExtent().height, 0.1f, 500.0f);
         ubo.proj[1][1] *= -1;
                 
-        memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+        memcpy(uniformBuffersMVP[currentImage].GetBufferMappedMemory(), &ubo, sizeof(ubo));
     }
 
     void drawFrame() {
@@ -543,7 +552,7 @@ private:
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = uniformBuffers[i];
+            bufferInfo.buffer = uniformBuffersMVP[i].GetBuffer();
             bufferInfo.offset = 0;
             bufferInfo.range = sizeof(UniformBufferObject);
 
@@ -593,16 +602,12 @@ private:
     }
 
     void createUniformBuffers() {
-        VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-        uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+        
+        uniformBuffersMVP.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            VkHelpers::createBuffer(device, physicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
-
-            vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+            
+            uniformBuffersMVP[i].Init(UBO_MVP_SIZE, device, physicalDevice);
         }
     }
 
@@ -680,15 +685,12 @@ private:
         vkDestroyDescriptorPool(device, descriptorPool, nullptr);
         vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
-
-
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
             vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
             vkDestroyFence(device, inFlightFences[i], nullptr);
 
-            vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-            vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+            uniformBuffersMVP[i].Destroy();
         }
 
         vkDestroyCommandPool(device, commandPool, nullptr);

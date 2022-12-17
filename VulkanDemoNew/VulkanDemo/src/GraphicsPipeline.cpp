@@ -1,5 +1,11 @@
 #include "GraphicsPipeline.h"
 
+GraphicsPipeline::GraphicsPipeline() 
+    :device(VK_NULL_HANDLE), graphicsPipeline(VK_NULL_HANDLE), pipelineLayout(VK_NULL_HANDLE)
+{
+
+}
+
 void GraphicsPipeline::AddShaderRaw(VkShaderStageFlagBits stage, std::vector<char> rawShader) {
     
     rawShaders[stage] = rawShader;
