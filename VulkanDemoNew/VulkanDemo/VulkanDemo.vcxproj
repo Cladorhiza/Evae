@@ -147,6 +147,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\CommandPool.cpp" />
     <ClCompile Include="src\GraphicsPipeline.cpp" />
     <ClCompile Include="src\Camera.cpp" />
     <ClCompile Include="src\IndexBuffer.cpp" />
@@ -161,6 +162,7 @@
     <ClCompile Include="src\SwapChain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\CommandPool.h" />
     <ClInclude Include="src\BasicVertex.h" />
     <ClInclude Include="src\GraphicsPipeline.h" />
     <ClInclude Include="src\Camera.h" />

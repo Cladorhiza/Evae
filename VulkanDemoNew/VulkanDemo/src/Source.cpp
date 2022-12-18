@@ -20,6 +20,7 @@
 #include "Utilities.h"
 #include "GraphicsPipeline.h"
 #include "SwapChain.h"
+#include "CommandPool.h"
 
 #include <chrono>
 #include <iostream>
@@ -38,6 +39,7 @@ const uint32_t WIDTH = 1800;
 const uint32_t HEIGHT = 1000;
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const uint32_t DRAW_DISTANCE = 128;
+const uint32_t COMMAND_BUFFER_ID_GRAPHICS_RENDER = 0;
 
 
 
@@ -143,11 +145,11 @@ private:
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
     std::vector<UniformBuffer> uniformBuffersMVP;
+    CommandPool commandPool;
     
+
     //needs refactoring
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-    VkCommandPool commandPool = VK_NULL_HANDLE;
-    std::vector<VkCommandBuffer> commandBuffers;
     bool framebufferResized = false;
     uint32_t currentFrame = 0;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
@@ -204,8 +206,8 @@ private:
         
         vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
-        vkResetCommandBuffer(commandBuffers[currentFrame], 0);
-        recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
+        vkResetCommandBuffer(commandPool.GetBuffers(COMMAND_BUFFER_ID_GRAPHICS_RENDER)[currentFrame], 0);
+        recordCommandBuffer(commandPool.GetBuffers(COMMAND_BUFFER_ID_GRAPHICS_RENDER)[currentFrame], imageIndex);
 
         updateUniformBuffer(currentFrame);
 
@@ -219,13 +221,15 @@ private:
         submitInfo.pWaitDstStageMask = waitStages;
 
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffers[currentFrame];
+        std::vector<VkCommandBuffer> cmdBuffs{commandPool.GetBuffers(0)};
+        submitInfo.pCommandBuffers = &cmdBuffs[currentFrame];
 
         VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
         submitInfo.signalSemaphoreCount = 1;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
-        if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS) {
+        VkResult result2 = vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]);
+        if (result2 != VK_SUCCESS) {
             throw std::runtime_error("failed to submit draw command buffer!");
         }
 
@@ -322,29 +326,11 @@ private:
     }
 
     void createCommandBuffers() {
-        commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-        VkCommandBufferAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = commandPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
-
-        if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate command buffers!");
-        }
+        commandPool.AddCommandBuffer(COMMAND_BUFFER_ID_GRAPHICS_RENDER, MAX_FRAMES_IN_FLIGHT, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
     }
 
     void createCommandPool() {
-        VkHelpers::QueueFamilyIndices queueFamilyIndices = VkHelpers::findQueueFamilies(physicalDevice, surface);
-
-        VkCommandPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-
-        if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create command pool!");
-        }
+        commandPool.Init(device, physicalDevice, surface);
     }
 
     void createRenderPass() {
@@ -511,12 +497,12 @@ private:
         createDescriptorSetLayout();
         createGraphicsPipeline();
         createCommandPool();
+        createCommandBuffers();
         InitTextures();
         createVertexBuffer();
         createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
-        createCommandBuffers();
         createSyncObjects();
     }
 
@@ -534,7 +520,7 @@ private:
     }
 
     void InitTextures() {
-        tex.Init("res/textures/grass.png", device, physicalDevice, commandPool, graphicsQueue);
+        tex.Init("res/textures/grass.png", device, physicalDevice, commandPool.GetCommandPool(), graphicsQueue);
     }
 
     void createDescriptorSets() {
@@ -638,8 +624,8 @@ private:
     }
 
     void createVertexBuffer() {
-        vertexBuffer.Init(device, physicalDevice, commandPool, graphicsQueue, vertexes);
-        indexBuffer.Init(device, physicalDevice, commandPool, graphicsQueue, indexes);
+        vertexBuffer.Init(device, physicalDevice, commandPool.GetCommandPool(), graphicsQueue, vertexes);
+        indexBuffer.Init(device, physicalDevice, commandPool.GetCommandPool(), graphicsQueue, indexes);
     }
 
     void MainLoop() {
@@ -693,7 +679,7 @@ private:
             uniformBuffersMVP[i].Destroy();
         }
 
-        vkDestroyCommandPool(device, commandPool, nullptr);
+        commandPool.Destroy();
         graphicsPipeline.Destroy();
         graphicsPipeline2.Destroy();
 
