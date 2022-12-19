@@ -1,6 +1,6 @@
 #include "IndexBuffer.h"
 
-void IndexBuffer::Init(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, std::vector<uint16_t> indices) {
+void IndexBuffer::Init(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, const std::vector<uint32_t>& indices) {
     device = dev;
     VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 

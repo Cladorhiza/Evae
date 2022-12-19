@@ -13,7 +13,7 @@ class IndexBuffer
 
 public:
     inline VkBuffer GetBuffer() { return buffer; };
-    void Init(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, std::vector<uint16_t> indices);
+    void Init(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, const std::vector<uint32_t>& indices);
     void Destroy();
 };
 

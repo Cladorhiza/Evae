@@ -12,7 +12,6 @@
 #include "InputManager.h"
 #include "Texture2D.h"
 #include "Vertex.h"
-#include "BasicVertex.h"
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
 #include "UniformBuffer.h"
@@ -21,6 +20,7 @@
 #include "GraphicsPipeline.h"
 #include "SwapChain.h"
 #include "CommandPool.h"
+#include "tinyobj/tiny_obj_loader.h"
 
 #include <chrono>
 #include <iostream>
@@ -38,10 +38,10 @@
 const uint32_t WIDTH = 1800;
 const uint32_t HEIGHT = 1000;
 const int MAX_FRAMES_IN_FLIGHT = 2;
-const uint32_t DRAW_DISTANCE = 128;
 const uint32_t COMMAND_BUFFER_ID_GRAPHICS_RENDER = 0;
 
-
+const std::string MODEL_PATH = "res/models/viking_room.obj";
+const std::string TEXTURE_PATH = "res/textures/viking_room.png";
 
 struct UniformBufferObject {
     glm::mat4 model;
@@ -50,16 +50,6 @@ struct UniformBufferObject {
 };
 
 constexpr uint32_t UBO_MVP_SIZE = sizeof(UniformBufferObject);
-
- std::vector<BasicVertex> vertexes{
-    {{1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-    {{-1.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-    {{0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 1.0f}, {0.5f, 0.0f}}
-};
-
- std::vector<uint16_t> indexes{
-    0,1,2
-};
 
  static bool textured = true;
 
@@ -142,18 +132,22 @@ private:
     GraphicsPipeline graphicsPipeline;
     GraphicsPipeline graphicsPipeline2;
     Texture2D tex;
+    Texture2D vikingTexture;
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
     std::vector<UniformBuffer> uniformBuffersMVP;
     CommandPool commandPool;
     
 
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+
     //needs refactoring
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
-    bool framebufferResized = false;
-    uint32_t currentFrame = 0;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> descriptorSets;
+    bool framebufferResized = false;
+    uint32_t currentFrame = 0;
 
     void createSyncObjects() {
         imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -181,7 +175,7 @@ private:
 
         UniformBufferObject ubo{};
 
-        ubo.model = glm::mat4(1.0f);
+        ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.f), glm::vec3(1.0f, 0.0f, 0.0f));
         ubo.view = Camera::getViewingMatrix();
         ubo.proj = glm::perspective(glm::radians(45.0f), swapChain.GetExtent().width / (float)swapChain.GetExtent().height, 0.1f, 500.0f);
         ubo.proj[1][1] *= -1;
@@ -313,16 +307,59 @@ private:
         VkBuffer vertexBuffers[] = { vertexBuffer.GetBuffer() };
         VkDeviceSize offsets[] = { 0 };
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, indexBuffer.GetBuffer(), 0, VK_INDEX_TYPE_UINT16);
+        vkCmdBindIndexBuffer(commandBuffer, indexBuffer.GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline.GetPipelineLayout(), 0, 1, &descriptorSets[currentFrame], 0, nullptr);
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indexes.size()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
 
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
             throw std::runtime_error("failed to record command buffer!");
         }
+    }
+
+    void loadModel() {
+        tinyobj::attrib_t attrib;
+        std::vector<tinyobj::shape_t> shapes;
+        std::vector<tinyobj::material_t> materials;
+        std::string warn, err;
+        int dupeVertexCount = 0;
+
+        if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, MODEL_PATH.c_str())) {
+            throw std::runtime_error(warn + err);
+        }
+
+        std::unordered_map<Vertex, uint32_t> uniqueVertices{};
+
+        for (const auto& shape : shapes) {
+            for (const auto& index : shape.mesh.indices) {
+                Vertex vertex{};
+
+                vertex.pos = {
+                    attrib.vertices[3 * index.vertex_index + 0],
+                    attrib.vertices[3 * index.vertex_index + 1],
+                    attrib.vertices[3 * index.vertex_index + 2]
+                };
+
+                vertex.texCoord = {
+                    attrib.texcoords[2 * index.texcoord_index + 0],
+                    1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+                };
+
+                vertex.color = { 1.0f, 1.0f, 1.0f };
+
+                if (uniqueVertices.count(vertex) == 0) {
+                    uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+                    vertices.push_back(vertex);
+                }
+                else
+                    dupeVertexCount++;
+
+                indices.push_back(uniqueVertices[vertex]);
+            }
+        }
+        std::cout << "Model loader removed " << dupeVertexCount << " duplicate vertices!\n";
     }
 
     void createCommandBuffers() {
@@ -394,7 +431,7 @@ private:
     void createGraphicsPipeline() {
         graphicsPipeline.AddShaderRaw(VK_SHADER_STAGE_VERTEX_BIT, Utilities::readFile("res/shaders/vert.spv"));
         graphicsPipeline.AddShaderRaw(VK_SHADER_STAGE_FRAGMENT_BIT, Utilities::readFile("res/shaders/frag.spv"));
-        BasicVertex v;
+        Vertex v;
         graphicsPipeline.Init(device, renderPass, descriptorSetLayout, &v);
         graphicsPipeline2.AddShaderRaw(VK_SHADER_STAGE_VERTEX_BIT, Utilities::readFile("res/shaders/vert2.spv"));
         graphicsPipeline2.AddShaderRaw(VK_SHADER_STAGE_FRAGMENT_BIT, Utilities::readFile("res/shaders/frag2.spv"));
@@ -499,6 +536,7 @@ private:
         createCommandPool();
         createCommandBuffers();
         InitTextures();
+        loadModel();
         createVertexBuffer();
         createUniformBuffers();
         createDescriptorPool();
@@ -521,6 +559,7 @@ private:
 
     void InitTextures() {
         tex.Init("res/textures/grass.png", device, physicalDevice, commandPool.GetCommandPool(), graphicsQueue);
+        vikingTexture.Init(TEXTURE_PATH, device, physicalDevice, commandPool.GetCommandPool(), graphicsQueue);
     }
 
     void createDescriptorSets() {
@@ -544,8 +583,8 @@ private:
 
             VkDescriptorImageInfo imageInfo{};
             imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = tex.GetImageView();
-            imageInfo.sampler = tex.GetSampler();
+            imageInfo.imageView = vikingTexture.GetImageView();
+            imageInfo.sampler = vikingTexture.GetSampler();
 
             std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
@@ -624,8 +663,8 @@ private:
     }
 
     void createVertexBuffer() {
-        vertexBuffer.Init(device, physicalDevice, commandPool.GetCommandPool(), graphicsQueue, vertexes);
-        indexBuffer.Init(device, physicalDevice, commandPool.GetCommandPool(), graphicsQueue, indexes);
+        vertexBuffer.Init(device, physicalDevice, commandPool.GetCommandPool(), graphicsQueue, vertices);
+        indexBuffer.Init(device, physicalDevice, commandPool.GetCommandPool(), graphicsQueue, indices);
     }
 
     void MainLoop() {
@@ -666,6 +705,7 @@ private:
         }
         swapChain.Destroy();
         tex.Destroy();
+        vikingTexture.Destroy();
         vertexBuffer.Destroy();
         indexBuffer.Destroy();
         vkDestroyDescriptorPool(device, descriptorPool, nullptr);

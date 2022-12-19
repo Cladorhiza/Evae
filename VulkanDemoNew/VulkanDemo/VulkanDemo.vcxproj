@@ -154,6 +154,7 @@
     <ClCompile Include="src\InputManager.cpp" />
     <ClCompile Include="src\Source.cpp" />
     <ClCompile Include="src\stb_image\stb_image.cpp" />
+    <ClCompile Include="src\tinyobj\tiny_obj_loader.cpp" />
     <ClCompile Include="src\VkHelpers.cpp" />
     <ClCompile Include="src\Texture2D.cpp" />
     <ClCompile Include="src\VertexBuffer.cpp" />
@@ -163,11 +164,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\CommandPool.h" />
-    <ClInclude Include="src\BasicVertex.h" />
     <ClInclude Include="src\GraphicsPipeline.h" />
     <ClInclude Include="src\Camera.h" />
     <ClInclude Include="src\IndexBuffer.h" />
     <ClInclude Include="src\InputManager.h" />
+    <ClInclude Include="src\tinyobj\tiny_obj_loader.h" />
     <ClInclude Include="src\VkHelpers.h" />
     <ClInclude Include="src\vma\vk_mem_alloc.h" />
     <ClInclude Include="src\Texture2D.h" />

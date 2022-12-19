@@ -9,7 +9,7 @@
 
 
 
-void VertexBuffer::Init(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, std::vector<BasicVertex>& vertices) {
+void VertexBuffer::Init(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, std::vector<Vertex>& vertices) {
     device = dev;
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
