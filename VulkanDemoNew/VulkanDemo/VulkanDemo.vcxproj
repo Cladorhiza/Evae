@@ -147,6 +147,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\RenderPass.cpp" />
     <ClCompile Include="src\Device.cpp" />
     <ClCompile Include="src\Instance.cpp" />
     <ClCompile Include="src\CommandPool.cpp" />
@@ -166,6 +167,7 @@
     <ClCompile Include="src\Surface.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\RenderPass.h" />
     <ClInclude Include="src\Device.h" />
     <ClInclude Include="src\Instance.h" />
     <ClInclude Include="src\CommandPool.h" />
