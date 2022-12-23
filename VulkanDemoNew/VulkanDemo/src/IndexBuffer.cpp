@@ -1,7 +1,8 @@
 #include "IndexBuffer.h"
 
-void IndexBuffer::Init(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, const std::vector<uint32_t>& indices) {
-    device = dev;
+IndexBuffer::IndexBuffer(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, const std::vector<uint32_t>& indices) 
+    :device(dev)
+{
     VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
     VkBuffer stagingBuffer;
@@ -21,8 +22,7 @@ void IndexBuffer::Init(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandP
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-void IndexBuffer::Destroy() {
-
+IndexBuffer::~IndexBuffer() {
 
     vkDestroyBuffer(device, buffer, nullptr);
     vkFreeMemory(device, bufferMemory, nullptr);

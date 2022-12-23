@@ -2,7 +2,7 @@
 
 
 
-void CommandPool::Init(VkDevice dev, VkPhysicalDevice physicalDev, VkSurfaceKHR surface) {
+CommandPool::CommandPool(VkDevice dev, VkPhysicalDevice physicalDev, VkSurfaceKHR surface) {
 
     device = dev;
     physicalDevice = physicalDev;
@@ -32,8 +32,7 @@ void CommandPool::AddCommandBuffer(int id, uint32_t count, VkCommandBufferLevel 
     }
 }
 
-void CommandPool::Destroy() {
+CommandPool::~CommandPool() {
 
     vkDestroyCommandPool(device, commandPool, nullptr);
-
 }

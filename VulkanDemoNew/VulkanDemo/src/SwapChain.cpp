@@ -1,16 +1,12 @@
 #include "SwapChain.h"
 
-void SwapChain::Init(VkDevice dev, VkPhysicalDevice physicalDevice, GLFWwindow* window, VkSurfaceKHR surface, VkRenderPass renderPass) {
-    this->device = dev;
-    this->physicalDevice = physicalDevice;
-    this->window = window;
-    this->surface = surface;
-    this->renderPass = renderPass;
+SwapChain::SwapChain(VkDevice dev, VkPhysicalDevice physicalDevice, GLFWwindow* window, VkSurfaceKHR surface, VkRenderPass renderPass) 
+    :device(dev), physicalDevice(physicalDevice), window(window), surface(surface), renderPass(renderPass)
+{
     createSwapChain();
     createImageViews();
     createDepthResources();
     createFramebuffers();
-
 }
 
 void SwapChain::createImageViews() {
@@ -144,24 +140,6 @@ void SwapChain::createFramebuffers() {
     }
 }
 
-void SwapChain::recreateSwapChain(GLFWwindow* window) {
-    int width = 0, height = 0;
-    glfwGetFramebufferSize(window, &width, &height);
-    while (width == 0 || height == 0) {
-        glfwGetFramebufferSize(window, &width, &height);
-        glfwWaitEvents();
-    }
-
-    vkDeviceWaitIdle(device);
-
-    Destroy();
-
-    createSwapChain();
-    createImageViews();
-    createDepthResources();
-    createFramebuffers();
-}
-
 void SwapChain::createDepthResources() {
 
     VkFormat depthFormat = VkHelpers::findSupportedFormat(
@@ -175,7 +153,7 @@ void SwapChain::createDepthResources() {
     depthImageView = VkHelpers::createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
-void SwapChain::Destroy() {
+SwapChain::~SwapChain() {
     for (auto framebuffer : framebuffers) {
         vkDestroyFramebuffer(device, framebuffer, nullptr);
     }

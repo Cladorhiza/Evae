@@ -18,9 +18,9 @@ private:
 	VkSampler Sampler;
 
 public:
+	Texture2D(std::string filePath, VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue);
+	~Texture2D();
 	inline VkImageView GetImageView() { return ImageView; }
 	inline VkSampler GetSampler() { return Sampler; }
-	void Init(std::string filePath, VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue);
-	void Destroy();
 };
 

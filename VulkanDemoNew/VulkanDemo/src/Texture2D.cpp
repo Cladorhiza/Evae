@@ -3,9 +3,9 @@
 
 
 
-void Texture2D::Init(std::string filePath, VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue) {
-
-    device = dev;
+Texture2D::Texture2D(std::string filePath, VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue)
+    :device(dev)
+{
 
     int texWidth, texHeight, texChannels;
     stbi_uc* pixels = stbi_load(filePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
@@ -65,11 +65,10 @@ void Texture2D::Init(std::string filePath, VkDevice dev, VkPhysicalDevice physic
     }
 }
 
-void Texture2D::Destroy() {
+Texture2D::~Texture2D() {
 
     vkDestroyImage(device, Image, nullptr);
     vkFreeMemory(device, ImageMemory, nullptr);
     vkDestroyImageView(device, ImageView, nullptr);
     vkDestroySampler(device, Sampler, nullptr);
-
 }

@@ -14,9 +14,12 @@ private:
 
 
 public:
-	inline VkBuffer GetBuffer() { return buffer; }
-	inline VkDeviceMemory GetBufferMemory() { return bufferMemory; }
-	void Init(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, std::vector<Vertex>& vertices);
-	void Destroy();
+
+	//getters
+	VkBuffer GetBuffer() { return buffer; }
+	VkDeviceMemory GetBufferMemory() { return bufferMemory; }
+	
+	VertexBuffer(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, std::vector<Vertex>& vertices);
+	~VertexBuffer();
 };
 

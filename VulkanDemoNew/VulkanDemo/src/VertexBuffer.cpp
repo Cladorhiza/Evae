@@ -1,16 +1,8 @@
 #include "VertexBuffer.h"
 
-
-
-
-
-
-
-
-
-
-void VertexBuffer::Init(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, std::vector<Vertex>& vertices) {
-    device = dev;
+VertexBuffer::VertexBuffer(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, std::vector<Vertex>& vertices) 
+    :device(dev)
+{
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
     VkBuffer stagingBuffer;
@@ -30,7 +22,7 @@ void VertexBuffer::Init(VkDevice dev, VkPhysicalDevice physicalDevice, VkCommand
     vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-void VertexBuffer::Destroy() {
+VertexBuffer::~VertexBuffer() {
 
     vkDestroyBuffer(device, buffer, nullptr);
     vkFreeMemory(device, bufferMemory, nullptr);

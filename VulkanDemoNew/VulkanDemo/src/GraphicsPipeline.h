@@ -20,11 +20,11 @@ private:
 public:
 
 	GraphicsPipeline();
+	~GraphicsPipeline();
 	inline VkPipeline GetPipeline() { return graphicsPipeline; }
 	inline VkPipelineLayout GetPipelineLayout() { return pipelineLayout; }
 
 	void AddShaderRaw(VkShaderStageFlagBits stage, std::vector<char> rawShader);
 	void Init(VkDevice dev, VkRenderPass renderPass, VkDescriptorSetLayout descriptorSetLayout, Vertex* format);
-	void Destroy();
 };
 

@@ -12,8 +12,11 @@ class IndexBuffer
     VkDeviceMemory bufferMemory;
 
 public:
+    //constructors
+    IndexBuffer(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, const std::vector<uint32_t>& indices);
+    ~IndexBuffer();
+    
+    //getters
     inline VkBuffer GetBuffer() { return buffer; };
-    void Init(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool commandPool, VkQueue graphicsQueue, const std::vector<uint32_t>& indices);
-    void Destroy();
 };
 

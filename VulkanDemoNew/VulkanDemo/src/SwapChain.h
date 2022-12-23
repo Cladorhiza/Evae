@@ -32,21 +32,23 @@ public:
         std::vector<VkPresentModeKHR> presentModes;
     };
 
-    inline VkSwapchainKHR GetSwapChain() { return swapChain; }
-    inline std::vector<VkImage>& GetImages() { return images; }
-    inline VkFormat GetImageFormat() { return imageFormat; }
-    inline VkExtent2D GetExtent() { return extent; }
-    inline std::vector<VkImageView>& GetImageViews() { return imageViews; }
-    inline std::vector<VkFramebuffer>& GetFrameBuffers() { return framebuffers; }
-    void Init(VkDevice dev, VkPhysicalDevice physicalDevice, GLFWwindow* window, VkSurfaceKHR surface, VkRenderPass renderPass);
+    SwapChain(VkDevice dev, VkPhysicalDevice physicalDevice, GLFWwindow* window, VkSurfaceKHR surface, VkRenderPass renderPass);
+    ~SwapChain();
+
+    //Getters
+    VkSwapchainKHR GetSwapChain() { return swapChain; }
+    std::vector<VkImage>& GetImages() { return images; }
+    VkFormat GetImageFormat() { return imageFormat; }
+    VkExtent2D GetExtent() { return extent; }
+    std::vector<VkImageView>& GetImageViews() { return imageViews; }
+    std::vector<VkFramebuffer>& GetFrameBuffers() { return framebuffers; }
+
     void createSwapChain();
     static VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
     static VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     static SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
     void createImageViews();
     void createFramebuffers();
-    void recreateSwapChain(GLFWwindow* window);
     void createDepthResources();
-    void Destroy();
 };
 

@@ -18,9 +18,10 @@ private:
     
 
 public:
+
+    UniformBuffer(uint32_t bufferSize, VkDevice dev, VkPhysicalDevice physicalDev);
+    ~UniformBuffer();
     inline VkBuffer GetBuffer() { return buffer; }
     inline void* GetBufferMappedMemory() { return bufferMapped; }
-    void Init(uint32_t bufferSize, VkDevice dev, VkPhysicalDevice physicalDev);
-    void Destroy();
 };
 

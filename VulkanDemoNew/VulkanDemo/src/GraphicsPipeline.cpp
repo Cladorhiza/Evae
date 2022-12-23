@@ -155,11 +155,12 @@ void GraphicsPipeline::Init(VkDevice dev, VkRenderPass renderPass, VkDescriptorS
     for (VkShaderModule& sm : shaderModules) {
         vkDestroyShaderModule(device, sm, nullptr);
     }
+
+    rawShaders.clear();
 }
 
-void GraphicsPipeline::Destroy() {
+GraphicsPipeline::~GraphicsPipeline() {
 
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-
 }
