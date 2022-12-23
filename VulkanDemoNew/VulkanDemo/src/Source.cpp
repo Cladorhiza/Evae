@@ -15,6 +15,7 @@
 #include "Device.h"
 #include "Surface.h"
 #include "RenderPass.h"
+#include "PhysicalDevice.h"
 
 //third party
 #include "tinyobj/tiny_obj_loader.h"
@@ -130,9 +131,6 @@ public:
             vkDestroySemaphore(device->GetDevice(), imageAvailableSemaphores[i], nullptr);
             vkDestroyFence(device->GetDevice(), inFlightFences[i], nullptr);
         }
-
-        
-
         glfwDestroyWindow(window);
         glfwTerminate();
     }
@@ -141,7 +139,6 @@ private:
     //application specific
     GLFWwindow* window;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
-    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
     //sync objects
     std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -151,6 +148,7 @@ private:
     //important to maintain order of instance -> device/surface -> the rest
     std::unique_ptr<Instance> instance;
     std::unique_ptr<Surface> surface;
+    std::unique_ptr<PhysicalDevice> physicalDevice;
     std::unique_ptr<Device> device;
     std::unique_ptr<RenderPass> renderPass;
     std::unique_ptr<SwapChain> swapChain;
@@ -207,7 +205,7 @@ private:
         vkDeviceWaitIdle(device->GetDevice());
 
         swapChain.reset();
-        swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice, window, surface->GetSurface(), renderPass->GetRenderPass());
+        swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), window, surface->GetSurface(), renderPass->GetRenderPass());
     }
 
     void updateUniformBuffer(uint32_t currentImage) {
@@ -406,11 +404,11 @@ private:
     }
 
     void createCommandPool() {
-        commandPool = std::make_unique<CommandPool>(device->GetDevice(), physicalDevice, surface->GetSurface());
+        commandPool = std::make_unique<CommandPool>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), surface->GetSurface());
     }
 
     void createRenderPass() {
-        renderPass = std::make_unique<RenderPass>(device->GetDevice(), physicalDevice, surface->GetSurface());
+        renderPass = std::make_unique<RenderPass>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), surface->GetSurface());
     }
 
     void createGraphicsPipeline() {
@@ -484,14 +482,14 @@ private:
     }
 
     void CreateSwapChain() {
-        swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice, window, surface->GetSurface(), renderPass->GetRenderPass());
+        swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), window, surface->GetSurface(), renderPass->GetRenderPass());
     }
 
     void InitVulkan() {
         createInstance();
         setupDebugMessenger();
         createSurface();
-        pickPhysicalDevice();
+        PickPhysicalDevice();
         CreateLogicalDevice();
         createRenderPass();
         CreateSwapChain();
@@ -513,8 +511,8 @@ private:
     }
 
     void InitTextures() {
-        tex = std::make_unique<Texture2D>("res/textures/grass.png", device->GetDevice(), physicalDevice, commandPool->GetCommandPool(), device->GetGraphicsQueue());
-        vikingTexture = std::make_unique<Texture2D>(TEXTURE_PATH, device->GetDevice(), physicalDevice, commandPool->GetCommandPool(), device->GetGraphicsQueue());
+        tex = std::make_unique<Texture2D>("res/textures/grass.png", device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue());
+        vikingTexture = std::make_unique<Texture2D>(TEXTURE_PATH, device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue());
     }
 
     void createDescriptorSets() {
@@ -588,7 +586,7 @@ private:
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             
 
-            uniformBuffersMVP[i] = std::make_unique<UniformBuffer>(UBO_MVP_SIZE, device->GetDevice(), physicalDevice);
+            uniformBuffersMVP[i] = std::make_unique<UniformBuffer>(UBO_MVP_SIZE, device->GetDevice(), physicalDevice->GetPhysicalDevice());
         }
     }
 
@@ -619,8 +617,8 @@ private:
     }
 
     void createVertexBuffer() {
-        vertexBuffer = std::make_unique<VertexBuffer>(device->GetDevice(), physicalDevice, commandPool->GetCommandPool(), device->GetGraphicsQueue(), vertices);
-        indexBuffer = std::make_unique<IndexBuffer>(device->GetDevice(), physicalDevice, commandPool->GetCommandPool(), device->GetGraphicsQueue(), indices);
+        vertexBuffer = std::make_unique<VertexBuffer>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue(), vertices);
+        indexBuffer = std::make_unique<IndexBuffer>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue(), indices);
     }
 
     void MainLoop() {
@@ -654,9 +652,13 @@ private:
         vkDeviceWaitIdle(device->GetDevice());
     }
 
+    void PickPhysicalDevice() {
+        physicalDevice = std::make_unique<PhysicalDevice>(instance->GetInstance(), surface->GetSurface(), deviceExtensions);
+    }
+
     void CreateLogicalDevice() {
 
-        device = std::make_unique<Device>(physicalDevice, surface->GetSurface(), enableValidationLayers, deviceExtensions, validationLayers);
+        device = std::make_unique<Device>(physicalDevice->GetPhysicalDevice(), surface->GetSurface(), enableValidationLayers, deviceExtensions, validationLayers);
     }
 
     void createInstance() {
@@ -667,47 +669,7 @@ private:
         instance = std::make_unique<Instance>(validationLayers, enableValidationLayers, debugCreateInfo, requiredExtensions);
     }
 
-    void pickPhysicalDevice() {
-
-        uint32_t deviceCount = 0;
-        vkEnumeratePhysicalDevices(instance->GetInstance(), &deviceCount, nullptr);
-
-        if (deviceCount == 0) {
-            throw std::runtime_error("failed to find GPUs with Vulkan support!");
-        }
-
-        std::vector<VkPhysicalDevice> devices(deviceCount);
-        vkEnumeratePhysicalDevices(instance->GetInstance(), &deviceCount, devices.data());
-
-        for (const auto& device : devices) {
-            if (isDeviceSuitable(device)) {
-                physicalDevice = device;
-                break;
-            }
-        }
-
-        if (physicalDevice == VK_NULL_HANDLE) {
-            throw std::runtime_error("failed to find a suitable GPU!");
-        }
-
-    }
-
-    bool isDeviceSuitable(VkPhysicalDevice device) {
-        VkHelpers::QueueFamilyIndices indices = VkHelpers::findQueueFamilies(device, surface->GetSurface());
-
-        bool extensionsSupported = VkHelpers::checkDeviceExtensionSupport(device, deviceExtensions);
-
-        bool swapChainAdequate = false;
-        if (extensionsSupported) {
-            SwapChain::SwapChainSupportDetails swapChainSupport = SwapChain::querySwapChainSupport(device, surface->GetSurface());
-            swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-        }
-
-        VkPhysicalDeviceFeatures supportedFeatures;
-        vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
-
-        return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
-    }
+    
 };
 
 
