@@ -399,18 +399,6 @@ private:
         std::cout << "Model loader removed " << dupeVertexCount << " duplicate vertices!\n";
     }
 
-    void createCommandBuffers() {
-        commandPool->AddCommandBuffer(COMMAND_BUFFER_ID_GRAPHICS_RENDER, MAX_FRAMES_IN_FLIGHT, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-    }
-
-    void createCommandPool() {
-        commandPool = std::make_unique<CommandPool>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), surface->GetSurface());
-    }
-
-    void createRenderPass() {
-        renderPass = std::make_unique<RenderPass>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), surface->GetSurface());
-    }
-
     void createGraphicsPipeline() {
         graphicsPipeline = std::make_unique<GraphicsPipeline>();
         graphicsPipeline->AddShaderRaw(VK_SHADER_STAGE_VERTEX_BIT, Utilities::readFile("res/shaders/vert.spv"));
@@ -456,10 +444,6 @@ private:
         return extensions;
     }
 
-    void createSurface() {
-        surface = std::make_unique<Surface>(instance->GetInstance(), window);
-    }
-
     void InitWindow() {
         if (glfwInit() == GLFW_FALSE) {
             std::cout << "glfw failed to initialize." << std::endl;
@@ -481,38 +465,68 @@ private:
         app->framebufferResized = true;
     }
 
-    void CreateSwapChain() {
-        swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), window, surface->GetSurface(), renderPass->GetRenderPass());
-    }
-
     void InitVulkan() {
-        createInstance();
+
+        //create instance
+        VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+        populateDebugMessengerCreateInfo(debugCreateInfo);
+        std::vector<const char*> requiredExtensions = getRequiredExtensions();
+        instance = std::make_unique<Instance>(validationLayers, enableValidationLayers, debugCreateInfo, requiredExtensions);
+
+
         setupDebugMessenger();
-        createSurface();
-        PickPhysicalDevice();
-        CreateLogicalDevice();
-        createRenderPass();
-        CreateSwapChain();
+        
+        //create surface
+        surface = std::make_unique<Surface>(instance->GetInstance(), window);
+        
+        //pick physical device
+        physicalDevice = std::make_unique<PhysicalDevice>(instance->GetInstance(), surface->GetSurface(), deviceExtensions);
+        
+        //create logical device
+        device = std::make_unique<Device>(physicalDevice->GetPhysicalDevice(), surface->GetSurface(), enableValidationLayers, deviceExtensions, validationLayers);
+
+        //create render pass
+        renderPass = std::make_unique<RenderPass>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), surface->GetSurface());
+
+
+        //create swap chain
+        swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), window, surface->GetSurface(), renderPass->GetRenderPass());
+
+
         createDescriptorSetLayout();
         createGraphicsPipeline();
-        createCommandPool();
-        createCommandBuffers();
-        InitTextures();
+
+        //create command pool
+        commandPool = std::make_unique<CommandPool>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), surface->GetSurface());
+
+
+        //add frame rendering command buffers
+        commandPool->AddCommandBuffer(COMMAND_BUFFER_ID_GRAPHICS_RENDER, MAX_FRAMES_IN_FLIGHT, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+        
+        //create textures
+        tex = std::make_unique<Texture2D>("res/textures/grass.png", device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue());
+        vikingTexture = std::make_unique<Texture2D>(TEXTURE_PATH, device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue());
+
+
+        
         loadModel();
-        createVertexBuffer();
-        createUniformBuffers();
+        
+        //create buffers
+        vertexBuffer = std::make_unique<VertexBuffer>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue(), vertices);
+        indexBuffer = std::make_unique<IndexBuffer>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue(), indices);
+
+
+        //create uniform buffers
+        uniformBuffersMVP.resize(MAX_FRAMES_IN_FLIGHT);
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            uniformBuffersMVP[i] = std::make_unique<UniformBuffer>(UBO_MVP_SIZE, device->GetDevice(), physicalDevice->GetPhysicalDevice());
+        }
+
+
         createDescriptorPool();
         createDescriptorSets();
         createSyncObjects();
-    }
-
-    bool hasStencilComponent(VkFormat format) {
-        return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
-    }
-
-    void InitTextures() {
-        tex = std::make_unique<Texture2D>("res/textures/grass.png", device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue());
-        vikingTexture = std::make_unique<Texture2D>(TEXTURE_PATH, device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue());
     }
 
     void createDescriptorSets() {
@@ -579,17 +593,6 @@ private:
         }
     }
 
-    void createUniformBuffers() {
-        
-        uniformBuffersMVP.resize(MAX_FRAMES_IN_FLIGHT);
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            
-
-            uniformBuffersMVP[i] = std::make_unique<UniformBuffer>(UBO_MVP_SIZE, device->GetDevice(), physicalDevice->GetPhysicalDevice());
-        }
-    }
-
     void createDescriptorSetLayout() {
         VkDescriptorSetLayoutBinding uboLayoutBinding{};
         uboLayoutBinding.binding = 0;
@@ -616,23 +619,35 @@ private:
         }
     }
 
-    void createVertexBuffer() {
-        vertexBuffer = std::make_unique<VertexBuffer>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue(), vertices);
-        indexBuffer = std::make_unique<IndexBuffer>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue(), indices);
-    }
-
     void MainLoop() {
+
+        //delta-time storage
         std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
         std::chrono::duration<float> elapsed;
+        
+        //used to test how many frames per second
         double d = 0.0;
         int framesCount = 0;
+
+        //main game loop
         while (!glfwWindowShouldClose(window)) {
+
             start = std::chrono::high_resolution_clock::now();
+            
+            //poll inputs
             InputManager::Poll(window);
-            drawFrame();
-            end = std::chrono::high_resolution_clock::now();
-            elapsed = (end - start);
+            
+            //update logic and draw
             Camera::Update(elapsed.count());
+            drawFrame();
+            
+            
+            end = std::chrono::high_resolution_clock::now();
+            
+            //calc delta time
+            elapsed = (end - start);
+
+            //framerate calculation
             d += elapsed.count();
             framesCount++;
             if (d > std::chrono::seconds(1).count()) {
@@ -641,9 +656,7 @@ private:
                 framesCount = 0;
             }
 
-
-
-
+            //exit program on escape
             if (InputManager::GetKeyState(GLFW_KEY_ESCAPE) == GLFW_PRESS) {
                 break;
             }
@@ -651,25 +664,6 @@ private:
 
         vkDeviceWaitIdle(device->GetDevice());
     }
-
-    void PickPhysicalDevice() {
-        physicalDevice = std::make_unique<PhysicalDevice>(instance->GetInstance(), surface->GetSurface(), deviceExtensions);
-    }
-
-    void CreateLogicalDevice() {
-
-        device = std::make_unique<Device>(physicalDevice->GetPhysicalDevice(), surface->GetSurface(), enableValidationLayers, deviceExtensions, validationLayers);
-    }
-
-    void createInstance() {
-
-        VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-        populateDebugMessengerCreateInfo(debugCreateInfo);
-        std::vector<const char*> requiredExtensions = getRequiredExtensions();
-        instance = std::make_unique<Instance>(validationLayers, enableValidationLayers, debugCreateInfo, requiredExtensions);
-    }
-
-    
 };
 
 
