@@ -18,6 +18,7 @@
 #include "PhysicalDevice.h"
 #include "DescriptorSetLayout.h"
 #include "DescriptorPool.h"
+#include "DescriptorSet.h"
 
 //third party
 #include "tinyobj/tiny_obj_loader.h"
@@ -164,12 +165,12 @@ private:
     std::vector<std::unique_ptr<UniformBuffer>> uniformBuffersMVP;
     std::unique_ptr<CommandPool> commandPool;
     std::unique_ptr<DescriptorPool> descriptorPool;
+    std::vector<std::unique_ptr<DescriptorSet>> descriptorSets;
 
+    //needs refactoring
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
 
-    //needs refactoring
-    std::vector<VkDescriptorSet> descriptorSets;
     bool framebufferResized = false;
     uint32_t currentFrame = 0;
 
@@ -348,7 +349,9 @@ private:
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
         vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->GetPipelineLayout(), 0, 1, &descriptorSets[currentFrame], 0, nullptr);
+        VkDescriptorSet tempDescSet = descriptorSets[currentFrame]->GetDescriptorSet();
+
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->GetPipelineLayout(), 0, 1, &tempDescSet, 0, nullptr);
         vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
         vkCmdEndRenderPass(commandBuffer);
@@ -532,7 +535,32 @@ private:
     }
 
     void createDescriptorSets() {
-        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout->GetDescriptorSetLayout());
+
+        descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = vikingTexture->GetImageView();
+        imageInfo.sampler = vikingTexture->GetSampler();
+
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+        
+        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+
+            bufferInfo.buffer = uniformBuffersMVP[i]->GetBuffer();
+
+            descriptorSets[i] = std::make_unique<DescriptorSet>(device->GetDevice(), descriptorPool->GetDescriptorPool());
+
+            descriptorSets[i]->AddDescriptorWrite(0,0,1,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,nullptr,&bufferInfo,nullptr);
+            descriptorSets[i]->AddDescriptorWrite(1,0,1,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageInfo, nullptr, nullptr);
+
+            descriptorSets[i]->Init(descriptorSetLayout->GetDescriptorSetLayout());
+
+        }
+
+        /*std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout->GetDescriptorSetLayout());
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = descriptorPool->GetDescriptorPool();
@@ -574,7 +602,7 @@ private:
             descriptorWrites[1].pImageInfo = &imageInfo;
 
             vkUpdateDescriptorSets(device->GetDevice(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-        }
+        }*/
     }
 
     void createDescriptorPool() {
