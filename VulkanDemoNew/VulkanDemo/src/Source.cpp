@@ -17,6 +17,7 @@
 #include "RenderPass.h"
 #include "PhysicalDevice.h"
 #include "DescriptorSetLayout.h"
+#include "DescriptorPool.h"
 
 //third party
 #include "tinyobj/tiny_obj_loader.h"
@@ -124,7 +125,7 @@ public:
         if (enableValidationLayers) {
             DestroyDebugUtilsMessengerEXT(instance->GetInstance(), debugMessenger, nullptr);
         }
-        vkDestroyDescriptorPool(device->GetDevice(), descriptorPool, nullptr);
+        
         
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -162,12 +163,12 @@ private:
     std::unique_ptr<IndexBuffer> indexBuffer;
     std::vector<std::unique_ptr<UniformBuffer>> uniformBuffersMVP;
     std::unique_ptr<CommandPool> commandPool;
+    std::unique_ptr<DescriptorPool> descriptorPool;
 
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
 
     //needs refactoring
-    VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> descriptorSets;
     bool framebufferResized = false;
     uint32_t currentFrame = 0;
@@ -534,7 +535,7 @@ private:
         std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout->GetDescriptorSetLayout());
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = descriptorPool;
+        allocInfo.descriptorPool = descriptorPool->GetDescriptorPool();
         allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
         allocInfo.pSetLayouts = layouts.data();
 
@@ -577,21 +578,13 @@ private:
     }
 
     void createDescriptorPool() {
-        std::array<VkDescriptorPoolSize, 2> poolSizes{};
-        poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-        poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
-        VkDescriptorPoolCreateInfo poolInfo{};
-        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-        poolInfo.pPoolSizes = poolSizes.data();
-        poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        descriptorPool = std::make_unique<DescriptorPool>(device->GetDevice());
 
-        if (vkCreateDescriptorPool(device->GetDevice(), &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create descriptor pool!");
-        }
+        descriptorPool->AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT);
+        descriptorPool->AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT);
+
+        descriptorPool->Init(100);
     }
 
     void createDescriptorSetLayout() {
