@@ -14,7 +14,7 @@ namespace Camera {
 	float xRotation = 0.0f;
 	float yRotation = 0.0f;
 
-	float speed = 25.f;
+	float speed = 5.f;
 	float sensitivity = .05f;
 
 

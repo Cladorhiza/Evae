@@ -16,6 +16,7 @@
 #include "Surface.h"
 #include "RenderPass.h"
 #include "PhysicalDevice.h"
+#include "DescriptorSetLayout.h"
 
 //third party
 #include "tinyobj/tiny_obj_loader.h"
@@ -124,7 +125,7 @@ public:
             DestroyDebugUtilsMessengerEXT(instance->GetInstance(), debugMessenger, nullptr);
         }
         vkDestroyDescriptorPool(device->GetDevice(), descriptorPool, nullptr);
-        vkDestroyDescriptorSetLayout(device->GetDevice(), descriptorSetLayout, nullptr);
+        
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vkDestroySemaphore(device->GetDevice(), renderFinishedSemaphores[i], nullptr);
@@ -154,6 +155,7 @@ private:
     std::unique_ptr<SwapChain> swapChain;
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
     std::unique_ptr<GraphicsPipeline> graphicsPipeline2;
+    std::unique_ptr<DescriptorSetLayout> descriptorSetLayout;
     std::unique_ptr<Texture2D> tex;
     std::unique_ptr<Texture2D> vikingTexture;
     std::unique_ptr<VertexBuffer> vertexBuffer;
@@ -165,7 +167,6 @@ private:
     std::vector<uint32_t> indices;
 
     //needs refactoring
-    VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> descriptorSets;
     bool framebufferResized = false;
@@ -404,11 +405,11 @@ private:
         graphicsPipeline->AddShaderRaw(VK_SHADER_STAGE_VERTEX_BIT, Utilities::readFile("res/shaders/vert.spv"));
         graphicsPipeline->AddShaderRaw(VK_SHADER_STAGE_FRAGMENT_BIT, Utilities::readFile("res/shaders/frag.spv"));
         Vertex v;
-        graphicsPipeline->Init(device->GetDevice(), renderPass->GetRenderPass(), descriptorSetLayout, &v);
+        graphicsPipeline->Init(device->GetDevice(), renderPass->GetRenderPass(), descriptorSetLayout->GetDescriptorSetLayout(), &v);
         graphicsPipeline2 = std::make_unique<GraphicsPipeline>();
         graphicsPipeline2->AddShaderRaw(VK_SHADER_STAGE_VERTEX_BIT, Utilities::readFile("res/shaders/vert2.spv"));
         graphicsPipeline2->AddShaderRaw(VK_SHADER_STAGE_FRAGMENT_BIT, Utilities::readFile("res/shaders/frag2.spv"));
-        graphicsPipeline2->Init(device->GetDevice(), renderPass->GetRenderPass(), descriptorSetLayout, &v);
+        graphicsPipeline2->Init(device->GetDevice(), renderPass->GetRenderPass(), descriptorSetLayout->GetDescriptorSetLayout(), &v);
     }
 
     void setupDebugMessenger() {
@@ -530,7 +531,7 @@ private:
     }
 
     void createDescriptorSets() {
-        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout->GetDescriptorSetLayout());
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = descriptorPool;
@@ -594,29 +595,11 @@ private:
     }
 
     void createDescriptorSetLayout() {
-        VkDescriptorSetLayoutBinding uboLayoutBinding{};
-        uboLayoutBinding.binding = 0;
-        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uboLayoutBinding.descriptorCount = 1;
-        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        uboLayoutBinding.pImmutableSamplers = nullptr; // Optional
 
-        VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-        samplerLayoutBinding.binding = 1;
-        samplerLayoutBinding.descriptorCount = 1;
-        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerLayoutBinding.pImmutableSamplers = nullptr;
-        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-        std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
-        VkDescriptorSetLayoutCreateInfo layoutInfo{};
-        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-        layoutInfo.pBindings = bindings.data();
-
-        if (vkCreateDescriptorSetLayout(device->GetDevice(), &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create descriptor set layout!");
-        }
+        descriptorSetLayout = std::make_unique<DescriptorSetLayout>(device->GetDevice());
+        descriptorSetLayout->AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT);
+        descriptorSetLayout->AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+        descriptorSetLayout->Init();
     }
 
     void MainLoop() {
@@ -665,7 +648,6 @@ private:
         vkDeviceWaitIdle(device->GetDevice());
     }
 };
-
 
 int main() {
     HelloTriangleApplication app;

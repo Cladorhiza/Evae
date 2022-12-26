@@ -1,10 +1,12 @@
 #pragma once
+
+#include "VkHelpers.h"
+#include "Vertex.h"
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <vector>
 
-#include "VkHelpers.h"
-#include "Vertex.h"
 class IndexBuffer
 {
     VkDevice device;
