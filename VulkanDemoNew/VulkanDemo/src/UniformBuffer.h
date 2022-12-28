@@ -3,6 +3,7 @@
 #include <GLFW/glfw3.h>
 
 #include <vector>
+#include <iostream>
 
 #include "VkHelpers.h"
 
@@ -21,7 +22,8 @@ public:
 
     UniformBuffer(uint32_t bufferSize, VkDevice dev, VkPhysicalDevice physicalDev);
     ~UniformBuffer();
-    inline VkBuffer GetBuffer() { return buffer; }
-    inline void* GetBufferMappedMemory() { return bufferMapped; }
+
+    VkBuffer GetBuffer() { return buffer; }
+    void* GetBufferMappedMemory() { return bufferMapped; }
 };
 

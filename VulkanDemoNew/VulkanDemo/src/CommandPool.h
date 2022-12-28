@@ -19,10 +19,12 @@ private:
 
 public:
 
-	~CommandPool();
 	CommandPool(VkDevice dev, VkPhysicalDevice physicalDev, VkSurfaceKHR surface);
-	inline VkCommandPool GetCommandPool() { return commandPool; }
-	inline std::vector<VkCommandBuffer> GetBuffers(int id) { return commandBufferMap[id]; }
+	~CommandPool();
+
+	VkCommandPool GetCommandPool() { return commandPool; }
+	std::vector<VkCommandBuffer> GetBuffers(int id) { return commandBufferMap[id]; }
+	
 	void AddCommandBuffer(int id, uint32_t count, VkCommandBufferLevel buffLevel);
 };
 

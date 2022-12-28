@@ -19,6 +19,7 @@
 #include "DescriptorSetLayout.h"
 #include "DescriptorPool.h"
 #include "DescriptorSet.h"
+#include "Sprite.h"
 
 //third party
 #include "tinyobj/tiny_obj_loader.h"
@@ -50,17 +51,30 @@ const uint32_t WIDTH = 1800;
 const uint32_t HEIGHT = 1000;
 const int MAX_FRAMES_IN_FLIGHT = 2;
 const uint32_t COMMAND_BUFFER_ID_GRAPHICS_RENDER = 0;
-
+const uint32_t COMMAND_BUFFER_ID_SPRITES_RENDER = 1;
+const std::vector<uint32_t> RECT_INDICES{ 1,2,0,3,0,2 };
 const std::string MODEL_PATH = "res/models/viking_room.obj";
 const std::string TEXTURE_PATH = "res/textures/viking_room.png";
 
-struct UniformBufferObject {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
+const std::array<std::string, 4> spriteTextures{
+    "res/textures/bruno.png",
+    "res/textures/theboys.jpg",
+    "res/textures/grass.png",
+    "res/textures/viking_room.png"
 };
 
-constexpr uint32_t UBO_MVP_SIZE = sizeof(UniformBufferObject);
+
+Vertex v1{ glm::vec3(0.f, 0.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(0.f, 1.f) };
+Vertex v2{ glm::vec3(1.f, 0.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(1.f, 1.f) };
+Vertex v3{ glm::vec3(1.f, 1.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(1.f, 0.f) };
+Vertex v4{ glm::vec3(0.f, 1.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(0.f, 0.f) };
+
+const std::vector<Vertex> rectVerts{
+    v1,
+    v2,
+    v3,
+    v4
+};
 
  static bool textured = true;
 
@@ -127,8 +141,6 @@ public:
             DestroyDebugUtilsMessengerEXT(instance->GetInstance(), debugMessenger, nullptr);
         }
         
-        
-
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
             vkDestroySemaphore(device->GetDevice(), renderFinishedSemaphores[i], nullptr);
             vkDestroySemaphore(device->GetDevice(), imageAvailableSemaphores[i], nullptr);
@@ -158,18 +170,21 @@ private:
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
     std::unique_ptr<GraphicsPipeline> graphicsPipeline2;
     std::unique_ptr<DescriptorSetLayout> descriptorSetLayout;
-    std::unique_ptr<Texture2D> tex;
-    std::unique_ptr<Texture2D> vikingTexture;
+    //std::unique_ptr<Texture2D> tex;
+    //std::unique_ptr<Texture2D> vikingTexture;
     std::unique_ptr<VertexBuffer> vertexBuffer;
     std::unique_ptr<IndexBuffer> indexBuffer;
-    std::vector<std::unique_ptr<UniformBuffer>> uniformBuffersMVP;
+    //std::vector<std::unique_ptr<UniformBuffer>> uniformBuffersMVP;
     std::unique_ptr<CommandPool> commandPool;
     std::unique_ptr<DescriptorPool> descriptorPool;
     std::vector<std::unique_ptr<DescriptorSet>> descriptorSets;
 
+    std::vector<std::unique_ptr<Sprite>> sprites;
+
+
     //needs refactoring
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
+    //std::vector<Vertex> vertices;
+    //std::vector<uint32_t> indices;
 
     bool framebufferResized = false;
     uint32_t currentFrame = 0;
@@ -211,16 +226,34 @@ private:
         swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), window, surface->GetSurface(), renderPass->GetRenderPass());
     }
 
-    void updateUniformBuffer(uint32_t currentImage) {
+    void updateUniformBuffer(uint32_t currentImage, float deltaTime) {
 
-        UniformBufferObject ubo{};
-
-        ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.f), glm::vec3(1.0f, 0.0f, 0.0f));
+        Sprite::UniformBufferObject ubo{};
         ubo.view = Camera::getViewingMatrix();
         ubo.proj = glm::perspective(glm::radians(45.0f), swapChain->GetExtent().width / (float)swapChain->GetExtent().height, 0.1f, 500.0f);
         ubo.proj[1][1] *= -1;
-                
-        memcpy(uniformBuffersMVP[currentImage]->GetBufferMappedMemory(), &ubo, sizeof(ubo));
+
+        //glm::vec4 tests[4]{
+        //    {0.f, 0.f, 0.f,1.0f},
+        //    {1.f, 0.f, 0.f,1.0f},
+        //    {1.f, 1.f, 0.f,1.0f},
+        //    {0.f, 1.f, 0.f,1.0f}
+        //};
+
+        for (int i{ 0 }; i < sprites.size(); i++) {
+            ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(i+deltaTime, 0.0f, 0.0f));
+
+            //for (int k{ 0 }; k < 4; k++) {
+            //    glm::vec4 testResult = ubo.model * tests[k];
+            //    std::cout << "Vec" << i << k << " x: " << testResult.x << " y: " << testResult.y << " z: " << testResult.z << ".\n";
+            //}
+
+            for (int j{ 0 }; j < MAX_FRAMES_IN_FLIGHT; j++) {
+
+                UniformBuffer* spriteUbo = sprites[i]->GetUniformBuffers(j);
+                memcpy(spriteUbo->GetBufferMappedMemory(), &ubo, sizeof(ubo));
+            }
+        }
     }
 
     void drawFrame() {
@@ -240,10 +273,10 @@ private:
         
         vkResetFences(device->GetDevice(), 1, &inFlightFences[currentFrame]);
 
-        vkResetCommandBuffer(commandPool->GetBuffers(COMMAND_BUFFER_ID_GRAPHICS_RENDER)[currentFrame], 0);
-        recordCommandBuffer(commandPool->GetBuffers(COMMAND_BUFFER_ID_GRAPHICS_RENDER)[currentFrame], imageIndex);
+        //vkResetCommandBuffer(commandPool->GetBuffers(COMMAND_BUFFER_ID_GRAPHICS_RENDER)[currentFrame], 0);
+        //recordCommandBuffer(commandPool->GetBuffers(COMMAND_BUFFER_ID_GRAPHICS_RENDER)[currentFrame], imageIndex);
 
-        updateUniformBuffer(currentFrame);
+        recordSpriteCommandBuffer(commandPool->GetBuffers(COMMAND_BUFFER_ID_SPRITES_RENDER)[currentFrame], imageIndex);
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -255,7 +288,7 @@ private:
         submitInfo.pWaitDstStageMask = waitStages;
 
         submitInfo.commandBufferCount = 1;
-        std::vector<VkCommandBuffer> cmdBuffs{commandPool->GetBuffers(0)};
+        std::vector<VkCommandBuffer> cmdBuffs{commandPool->GetBuffers(COMMAND_BUFFER_ID_SPRITES_RENDER)};
         submitInfo.pCommandBuffers = &cmdBuffs[currentFrame];
 
         VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
@@ -293,7 +326,67 @@ private:
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
-    void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+    //void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+    //    VkCommandBufferBeginInfo beginInfo{};
+    //    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    //    beginInfo.flags = 0; // Optional
+    //    beginInfo.pInheritanceInfo = nullptr; // Optional
+
+    //    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+    //        throw std::runtime_error("failed to begin recording command buffer!");
+    //    }
+
+    //    VkRenderPassBeginInfo renderPassInfo{};
+    //    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    //    renderPassInfo.renderPass = renderPass->GetRenderPass();
+    //    renderPassInfo.framebuffer = swapChain->GetFrameBuffers()[imageIndex];
+
+    //    renderPassInfo.renderArea.offset = { 0, 0 };
+    //    renderPassInfo.renderArea.extent = swapChain->GetExtent();
+
+    //    std::array<VkClearValue, 2> clearValues{};
+    //    clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+    //    clearValues[1].depthStencil = { 1.0f, 0 };
+    //    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    //    renderPassInfo.pClearValues = clearValues.data();
+
+    //    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    //    VkViewport viewport{};
+    //    viewport.x = 0.0f;
+    //    viewport.y = 0.0f;
+    //    viewport.width = static_cast<float>(swapChain->GetExtent().width);
+    //    viewport.height = static_cast<float>(swapChain->GetExtent().height);
+    //    viewport.minDepth = 0.0f;
+    //    viewport.maxDepth = 1.0f;
+    //    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+    //    VkRect2D scissor{};
+    //    scissor.offset = { 0, 0 };
+    //    scissor.extent = swapChain->GetExtent();
+    //    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    //    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->GetPipeline());
+    //    
+
+    //    VkBuffer vertexBuffers[] = { vertexBuffer->GetBuffer() };
+    //    VkDeviceSize offsets[] = { 0 };
+    //    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    //    vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+    //    VkDescriptorSet tempDescSet = descriptorSets[currentFrame]->GetDescriptorSet();
+
+    //    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->GetPipelineLayout(), 0, 1, &tempDescSet, 0, nullptr);
+    //    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+    //    vkCmdEndRenderPass(commandBuffer);
+
+    //    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+    //        throw std::runtime_error("failed to record command buffer!");
+    //    }
+    //}
+
+    void recordSpriteCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         beginInfo.flags = 0; // Optional
@@ -333,27 +426,24 @@ private:
         scissor.extent = swapChain->GetExtent();
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        
-        if (InputManager::GetKeyToggle(GLFW_KEY_T)){
-            textured = !textured;
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->GetPipeline());
+
+        for (int i = 0; i < sprites.size(); i++) {
+
+            VkBuffer vertexBuffers[] = {sprites[i]->GetVertexBuffer()->GetBuffer()};
+            VkDeviceSize offsets[] = { 0 };
+            vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+            vkCmdBindIndexBuffer(commandBuffer, sprites[i]->GetIndexBuffer()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+            VkDescriptorSet tempDescSet = sprites[i]->GetDescriptorSets(currentFrame)->GetDescriptorSet();
+
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->GetPipelineLayout(), 0, 1, &tempDescSet, 0, nullptr);
+            vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(RECT_INDICES.size()), 1, 0, 0, 0);
+
+
+
         }
-        if (textured) {
-            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->GetPipeline());
-        }
-        else {
-            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline2->GetPipeline());
-        }
-
-        VkBuffer vertexBuffers[] = { vertexBuffer->GetBuffer() };
-        VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, indexBuffer->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-        VkDescriptorSet tempDescSet = descriptorSets[currentFrame]->GetDescriptorSet();
-
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->GetPipelineLayout(), 0, 1, &tempDescSet, 0, nullptr);
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-
         vkCmdEndRenderPass(commandBuffer);
 
         if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
@@ -361,7 +451,7 @@ private:
         }
     }
 
-    void loadModel() {
+    /*void loadModel() {
         tinyobj::attrib_t attrib;
         std::vector<tinyobj::shape_t> shapes;
         std::vector<tinyobj::material_t> materials;
@@ -402,7 +492,7 @@ private:
             }
         }
         std::cout << "Model loader removed " << dupeVertexCount << " duplicate vertices!\n";
-    }
+    }*/
 
     void createGraphicsPipeline() {
         graphicsPipeline = std::make_unique<GraphicsPipeline>();
@@ -505,104 +595,72 @@ private:
         commandPool = std::make_unique<CommandPool>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), surface->GetSurface());
 
 
-        //add frame rendering command buffers
-        commandPool->AddCommandBuffer(COMMAND_BUFFER_ID_GRAPHICS_RENDER, MAX_FRAMES_IN_FLIGHT, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
         
         //create textures
-        tex = std::make_unique<Texture2D>("res/textures/grass.png", device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue());
-        vikingTexture = std::make_unique<Texture2D>(TEXTURE_PATH, device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue());
+        //tex = std::make_unique<Texture2D>("res/textures/grass.png", device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue());
+        //vikingTexture = std::make_unique<Texture2D>(TEXTURE_PATH, device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue());
 
 
         
-        loadModel();
+        //loadModel();
         
         //create buffers
-        vertexBuffer = std::make_unique<VertexBuffer>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue(), vertices);
-        indexBuffer = std::make_unique<IndexBuffer>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue(), indices);
-
 
         //create uniform buffers
-        uniformBuffersMVP.resize(MAX_FRAMES_IN_FLIGHT);
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            uniformBuffersMVP[i] = std::make_unique<UniformBuffer>(UBO_MVP_SIZE, device->GetDevice(), physicalDevice->GetPhysicalDevice());
-        }
+        //uniformBuffersMVP.resize(MAX_FRAMES_IN_FLIGHT);
+        //for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        //    uniformBuffersMVP[i] = std::make_unique<UniformBuffer>(UBO_MVP_SIZE, device->GetDevice(), physicalDevice->GetPhysicalDevice());
+        //}
 
 
         createDescriptorPool();
         createDescriptorSets();
         createSyncObjects();
+
+
+        sprites.resize(4);
+        for (int i = 0; i < 4; i++) {
+
+            sprites[i] = std::make_unique<Sprite>(rectVerts, RECT_INDICES, spriteTextures[i], device->GetDevice(), physicalDevice->GetPhysicalDevice(), device->GetGraphicsQueue(),
+                commandPool->GetCommandPool(), descriptorPool->GetDescriptorPool(), static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT), descriptorSetLayout->GetDescriptorSetLayout());
+            
+            
+        }
+        
+        //add frame rendering command buffers
+        commandPool->AddCommandBuffer(COMMAND_BUFFER_ID_GRAPHICS_RENDER, MAX_FRAMES_IN_FLIGHT, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+        commandPool->AddCommandBuffer(COMMAND_BUFFER_ID_SPRITES_RENDER, MAX_FRAMES_IN_FLIGHT, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+        //vertexBuffer = std::make_unique<VertexBuffer>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue(), vertices);
+        //indexBuffer = std::make_unique<IndexBuffer>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), commandPool->GetCommandPool(), device->GetGraphicsQueue(), indices);
+
     }
 
     void createDescriptorSets() {
 
-        descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-
-        VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        imageInfo.imageView = vikingTexture->GetImageView();
-        imageInfo.sampler = vikingTexture->GetSampler();
-
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof(UniformBufferObject);
-        
-        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-
-            bufferInfo.buffer = uniformBuffersMVP[i]->GetBuffer();
-
-            descriptorSets[i] = std::make_unique<DescriptorSet>(device->GetDevice(), descriptorPool->GetDescriptorPool());
-
-            descriptorSets[i]->AddDescriptorWrite(0,0,1,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,nullptr,&bufferInfo,nullptr);
-            descriptorSets[i]->AddDescriptorWrite(1,0,1,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageInfo, nullptr, nullptr);
-
-            descriptorSets[i]->Init(descriptorSetLayout->GetDescriptorSetLayout());
-
-        }
-
-        /*std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout->GetDescriptorSetLayout());
-        VkDescriptorSetAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = descriptorPool->GetDescriptorPool();
-        allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-        allocInfo.pSetLayouts = layouts.data();
-
-        descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
-        if (vkAllocateDescriptorSets(device->GetDevice(), &allocInfo, descriptorSets.data()) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate descriptor sets!");
-        }
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = uniformBuffersMVP[i]->GetBuffer();
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBufferObject);
-
-            VkDescriptorImageInfo imageInfo{};
-            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = vikingTexture->GetImageView();
-            imageInfo.sampler = vikingTexture->GetSampler();
-
-            std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
-
-            descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[0].dstSet = descriptorSets[i];
-            descriptorWrites[0].dstBinding = 0;
-            descriptorWrites[0].dstArrayElement = 0;
-            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrites[0].descriptorCount = 1;
-            descriptorWrites[0].pBufferInfo = &bufferInfo;
-
-            descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[1].dstSet = descriptorSets[i];
-            descriptorWrites[1].dstBinding = 1;
-            descriptorWrites[1].dstArrayElement = 0;
-            descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorWrites[1].descriptorCount = 1;
-            descriptorWrites[1].pImageInfo = &imageInfo;
-
-            vkUpdateDescriptorSets(device->GetDevice(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-        }*/
+        //descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+        //
+        //VkDescriptorImageInfo imageInfo{};
+        //imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        //imageInfo.imageView = vikingTexture->GetImageView();
+        //imageInfo.sampler = vikingTexture->GetSampler();
+        //
+        //VkDescriptorBufferInfo bufferInfo{};
+        //bufferInfo.offset = 0;
+        //bufferInfo.range = sizeof(UniformBufferObject);
+        //
+        //for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        //
+        //    bufferInfo.buffer = uniformBuffersMVP[i]->GetBuffer();
+        //
+        //    descriptorSets[i] = std::make_unique<DescriptorSet>(device->GetDevice(), descriptorPool->GetDescriptorPool());
+        //
+        //    descriptorSets[i]->AddDescriptorWrite(0,0,1,VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,nullptr,&bufferInfo,nullptr);
+        //    descriptorSets[i]->AddDescriptorWrite(1,0,1,VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageInfo, nullptr, nullptr);
+        //
+        //    descriptorSets[i]->Init(descriptorSetLayout->GetDescriptorSetLayout());
+        //
+        //}
     }
 
     void createDescriptorPool() {
@@ -643,6 +701,9 @@ private:
             
             //update logic and draw
             Camera::Update(elapsed.count());
+
+            updateUniformBuffer(currentFrame, d);
+
             drawFrame();
             
             
