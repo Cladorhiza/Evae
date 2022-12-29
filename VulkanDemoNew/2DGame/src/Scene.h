@@ -1,8 +1,11 @@
 #pragma once
 #include "Entity.h"
 #include "systems/TransformSystem.h"
+
+
 #include <unordered_map>
 #include <iostream>
+#include <chrono>
 class Scene
 {
 private:
@@ -15,5 +18,6 @@ public:
 	Scene();
 	Entity& GetEntity(uint32_t id);
 	uint32_t AddEntity();
+	void MainLoop();
 };
 
