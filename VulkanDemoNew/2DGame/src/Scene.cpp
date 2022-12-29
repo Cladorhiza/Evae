@@ -31,49 +31,49 @@ uint32_t Scene::AddEntity() {
 
 void Scene::MainLoop() {
 
-    //delta-time storage
-    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
-    std::chrono::duration<float> elapsed;
+    ////delta-time storage
+    //std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
+    //std::chrono::duration<float> elapsed;
 
-    //used to test how many frames per second
-    double d = 0.0;
-    int framesCount = 0;
+    ////used to test how many frames per second
+    //double d = 0.0;
+    //int framesCount = 0;
 
-    //main game loop
-    while (!glfwWindowShouldClose(window)) {
+    ////main game loop
+    //while (!glfwWindowShouldClose(window)) {
 
-        start = std::chrono::high_resolution_clock::now();
+    //    start = std::chrono::high_resolution_clock::now();
 
-        //poll inputs
-        InputManager::Poll(window);
+    //    //poll inputs
+    //    InputManager::Poll(window);
 
-        //update logic and draw
-        Camera::Update(elapsed.count());
+    //    //update logic and draw
+    //    Camera::Update(elapsed.count());
 
-        updateUniformBuffer(currentFrame, d);
+    //    updateUniformBuffer(currentFrame, d);
 
-        drawFrame();
+    //    drawFrame();
 
 
-        end = std::chrono::high_resolution_clock::now();
+    //    end = std::chrono::high_resolution_clock::now();
 
-        //calc delta time
-        elapsed = (end - start);
+    //    //calc delta time
+    //    elapsed = (end - start);
 
-        //framerate calculation
-        d += elapsed.count();
-        framesCount++;
-        if (d > std::chrono::seconds(1).count()) {
-            d -= std::chrono::seconds(1).count();
-            std::cout << framesCount << std::endl;
-            framesCount = 0;
-        }
+    //    //framerate calculation
+    //    d += elapsed.count();
+    //    framesCount++;
+    //    if (d > std::chrono::seconds(1).count()) {
+    //        d -= std::chrono::seconds(1).count();
+    //        std::cout << framesCount << std::endl;
+    //        framesCount = 0;
+    //    }
 
-        //exit program on escape
-        if (InputManager::GetKeyState(GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-            break;
-        }
-    }
+    //    //exit program on escape
+    //    if (InputManager::GetKeyState(GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+    //        break;
+    //    }
+    //}
 
-    vkDeviceWaitIdle(device->GetDevice());
+    //vkDeviceWaitIdle(device->GetDevice());
 }

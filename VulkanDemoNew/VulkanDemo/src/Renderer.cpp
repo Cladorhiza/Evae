@@ -1,94 +1,6 @@
-//project files
-#include "VkHelpers.h"
-#include "InputManager.h"
-#include "Texture2D.h"
-#include "Vertex.h"
-#include "VertexBuffer.h"
-#include "IndexBuffer.h"
-#include "UniformBuffer.h"
-#include "Camera.h"
-#include "Utilities.h"
-#include "GraphicsPipeline.h"
-#include "SwapChain.h"
-#include "CommandPool.h"
-#include "Instance.h"
-#include "Device.h"
-#include "Surface.h"
-#include "RenderPass.h"
-#include "PhysicalDevice.h"
-#include "DescriptorSetLayout.h"
-#include "DescriptorPool.h"
-#include "DescriptorSet.h"
-#include "Sprite.h"
-
-//third party
-#include "tinyobj/tiny_obj_loader.h"
-#include "vma/vk_mem_alloc.h"
-#include "stb_image/stb_image.h"
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
-//std lib
-#include <chrono>
-#include <iostream>
-#include <stdexcept>
-#include <cstdlib>
-#include <vector>
-#include <optional>
-#include <set>
-#include <cstdint> 
-#include <limits> 
-#include <algorithm> 
-#include <fstream>
-#include <array>
-#include <memory>
-
-const uint32_t WIDTH = 1280;
-const uint32_t HEIGHT = 720;
-const int MAX_FRAMES_IN_FLIGHT = 2;
-const uint32_t COMMAND_BUFFER_ID_GRAPHICS_RENDER = 0;
-const uint32_t COMMAND_BUFFER_ID_SPRITES_RENDER = 1;
-const std::vector<uint32_t> RECT_INDICES{ 1,2,0,3,0,2 };
-
-const std::array<std::string, 4> spriteTextures{
-    "res/textures/bruno.png",
-    "res/textures/theboys.jpg",
-    "res/textures/grass.png",
-    "res/textures/viking_room.png"
-};
+#include "Renderer.h"
 
 
-Vertex v1{ glm::vec3(0.f, 0.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(0.f, 1.f) };
-Vertex v2{ glm::vec3(1.f, 0.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(1.f, 1.f) };
-Vertex v3{ glm::vec3(1.f, 1.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(1.f, 0.f) };
-Vertex v4{ glm::vec3(0.f, 1.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(0.f, 0.f) };
-
-const std::vector<Vertex> rectVerts{
-    v1,
-    v2,
-    v3,
-    v4
-};
-
- static bool textured = true;
-
-const std::vector<const char*> validationLayers = {
-    "VK_LAYER_KHRONOS_validation"
-};
-
-const std::vector<const char*> deviceExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME
-};
-
-#ifdef NDEBUG
-const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -122,437 +34,408 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
     }
 }
 
-class Renderer {
-public:
-    void Init() {
-        InitWindow();
-        InitVulkan();
-        Render();
+
+void Renderer::Init() {
+    InitWindow();
+    InitVulkan();
+    Render();
+}
+
+Renderer::~Renderer() {
+
+    if (enableValidationLayers) {
+        DestroyDebugUtilsMessengerEXT(instance->GetInstance(), debugMessenger, nullptr);
     }
-
-    ~Renderer() {
-
-        if (enableValidationLayers) {
-            DestroyDebugUtilsMessengerEXT(instance->GetInstance(), debugMessenger, nullptr);
-        }
         
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            vkDestroySemaphore(device->GetDevice(), renderFinishedSemaphores[i], nullptr);
-            vkDestroySemaphore(device->GetDevice(), imageAvailableSemaphores[i], nullptr);
-            vkDestroyFence(device->GetDevice(), inFlightFences[i], nullptr);
-        }
-        glfwDestroyWindow(window);
-        glfwTerminate();
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroySemaphore(device->GetDevice(), renderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(device->GetDevice(), imageAvailableSemaphores[i], nullptr);
+        vkDestroyFence(device->GetDevice(), inFlightFences[i], nullptr);
     }
+    glfwDestroyWindow(window);
+    glfwTerminate();
+}
 
-private:
-    //application specific
-    GLFWwindow* window;
-    VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
 
-    //sync objects
-    std::vector<VkSemaphore> imageAvailableSemaphores;
-    std::vector<VkSemaphore> renderFinishedSemaphores;
-    std::vector<VkFence> inFlightFences;
+void Renderer::createSyncObjects() {
+    imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
 
-    //important to maintain order of instance -> device/surface -> the rest
-    std::unique_ptr<Instance> instance;
-    std::unique_ptr<Surface> surface;
-    std::unique_ptr<PhysicalDevice> physicalDevice;
-    std::unique_ptr<Device> device;
-    std::unique_ptr<RenderPass> renderPass;
-    std::unique_ptr<SwapChain> swapChain;
-    std::unique_ptr<GraphicsPipeline> graphicsPipeline;
-    std::unique_ptr<GraphicsPipeline> graphicsPipeline2;
-    std::unique_ptr<DescriptorSetLayout> descriptorSetLayout;
-    std::unique_ptr<CommandPool> commandPool;
-    std::unique_ptr<DescriptorPool> descriptorPool;
-    std::vector<std::unique_ptr<DescriptorSet>> descriptorSets;
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    std::vector<std::unique_ptr<Sprite>> sprites;
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    bool framebufferResized = false;
-    uint32_t currentFrame = 0;
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        if (vkCreateSemaphore(device->GetDevice(), &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
+            vkCreateSemaphore(device->GetDevice(), &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
+            vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
 
-    void createSyncObjects() {
-        imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
-        inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
-
-        VkSemaphoreCreateInfo semaphoreInfo{};
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-        VkFenceCreateInfo fenceInfo{};
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            if (vkCreateSemaphore(device->GetDevice(), &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-                vkCreateSemaphore(device->GetDevice(), &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-                vkCreateFence(device->GetDevice(), &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
-
-                throw std::runtime_error("failed to create synchronization objects for a frame!");
-            }
+            throw std::runtime_error("failed to create synchronization objects for a frame!");
         }
     }
+}
 
 
-    void recreateSwapChain() {
-        int width = 0, height = 0;
+void Renderer::recreateSwapChain() {
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(window, &width, &height);
+    while (width == 0 || height == 0) {
         glfwGetFramebufferSize(window, &width, &height);
-        while (width == 0 || height == 0) {
-            glfwGetFramebufferSize(window, &width, &height);
-            glfwWaitEvents();
-        }
-
-        vkDeviceWaitIdle(device->GetDevice());
-
-        swapChain.reset();
-        swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), window, surface->GetSurface(), renderPass->GetRenderPass());
+        glfwWaitEvents();
     }
 
-    void updateUniformBuffer(uint32_t currentImage, float deltaTime) {
+    vkDeviceWaitIdle(device->GetDevice());
 
-        Sprite::UniformBufferObject ubo{};
-        ubo.view = Camera::getViewingMatrix();
-        ubo.proj = glm::perspective(glm::radians(45.0f), swapChain->GetExtent().width / (float)swapChain->GetExtent().height, 0.1f, 500.0f);
-        ubo.proj[1][1] *= -1;
+    swapChain.reset();
+    swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), window, surface->GetSurface(), renderPass->GetRenderPass());
+}
 
-        for (int i{ 0 }; i < sprites.size(); i++) {
-            ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(i+deltaTime, 0.0f, 0.0f));
+void Renderer::updateUniformBuffer(uint32_t currentImage, float deltaTime) {
 
-            for (int j{ 0 }; j < MAX_FRAMES_IN_FLIGHT; j++) {
+    Sprite::UniformBufferObject ubo{};
+    ubo.view = Camera::getViewingMatrix();
+    ubo.proj = glm::perspective(glm::radians(45.0f), swapChain->GetExtent().width / (float)swapChain->GetExtent().height, 0.1f, 500.0f);
+    ubo.proj[1][1] *= -1;
 
-                UniformBuffer* spriteUbo = sprites[i]->GetUniformBuffers(j);
-                memcpy(spriteUbo->GetBufferMappedMemory(), &ubo, sizeof(ubo));
-            }
+    for (int i{ 0 }; i < sprites.size(); i++) {
+        ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(i+deltaTime, 0.0f, 0.0f));
+
+        for (int j{ 0 }; j < MAX_FRAMES_IN_FLIGHT; j++) {
+
+            UniformBuffer* spriteUbo = sprites[i]->GetUniformBuffers(j);
+            memcpy(spriteUbo->GetBufferMappedMemory(), &ubo, sizeof(ubo));
         }
     }
+}
 
-    void drawFrame() {
+void Renderer::drawFrame() {
 
-        vkWaitForFences(device->GetDevice(), 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
+    vkWaitForFences(device->GetDevice(), 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
-        uint32_t imageIndex;
-        VkResult result = vkAcquireNextImageKHR(device->GetDevice(), swapChain->GetSwapChain(), UINT32_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+    uint32_t imageIndex;
+    VkResult result = vkAcquireNextImageKHR(device->GetDevice(), swapChain->GetSwapChain(), UINT32_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-            recreateSwapChain();
-            return;
-        }
-        else if (result != VK_SUCCESS) {
-            throw std::runtime_error("failed to acquire swap chain image!");
-        }
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        recreateSwapChain();
+        return;
+    }
+    else if (result != VK_SUCCESS) {
+        throw std::runtime_error("failed to acquire swap chain image!");
+    }
         
-        vkResetFences(device->GetDevice(), 1, &inFlightFences[currentFrame]);
+    vkResetFences(device->GetDevice(), 1, &inFlightFences[currentFrame]);
 
-        recordSpriteCommandBuffer(commandPool->GetBuffers(COMMAND_BUFFER_ID_SPRITES_RENDER)[currentFrame], imageIndex);
+    recordSpriteCommandBuffer(commandPool->GetBuffers(COMMAND_BUFFER_ID_SPRITES_RENDER)[currentFrame], imageIndex);
 
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-        VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
-        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-        submitInfo.waitSemaphoreCount = 1;
-        submitInfo.pWaitSemaphores = waitSemaphores;
-        submitInfo.pWaitDstStageMask = waitStages;
+    VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[currentFrame] };
+    VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
 
-        submitInfo.commandBufferCount = 1;
-        std::vector<VkCommandBuffer> cmdBuffs{commandPool->GetBuffers(COMMAND_BUFFER_ID_SPRITES_RENDER)};
-        submitInfo.pCommandBuffers = &cmdBuffs[currentFrame];
+    submitInfo.commandBufferCount = 1;
+    std::vector<VkCommandBuffer> cmdBuffs{commandPool->GetBuffers(COMMAND_BUFFER_ID_SPRITES_RENDER)};
+    submitInfo.pCommandBuffers = &cmdBuffs[currentFrame];
 
-        VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = signalSemaphores;
+    VkSemaphore signalSemaphores[] = { renderFinishedSemaphores[currentFrame] };
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;
 
-        VkResult result2 = vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, inFlightFences[currentFrame]);
-        if (result2 != VK_SUCCESS) {
-            throw std::runtime_error("failed to submit draw command buffer!");
-        }
-
-        VkPresentInfoKHR presentInfo{};
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-        presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = signalSemaphores;
-
-        VkSwapchainKHR swapChains[] = { swapChain->GetSwapChain() };
-        presentInfo.swapchainCount = 1;
-        presentInfo.pSwapchains = swapChains;
-        presentInfo.pImageIndices = &imageIndex;
-
-        presentInfo.pResults = nullptr; // Optional
-
-        result = vkQueuePresentKHR(device->GetPresentQueue(), &presentInfo);
-
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
-            framebufferResized = false;
-            recreateSwapChain();
-        }
-        else if (result != VK_SUCCESS) {
-            throw std::runtime_error("failed to present swap chain image!");
-        }
-
-        currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+    VkResult result2 = vkQueueSubmit(device->GetGraphicsQueue(), 1, &submitInfo, inFlightFences[currentFrame]);
+    if (result2 != VK_SUCCESS) {
+        throw std::runtime_error("failed to submit draw command buffer!");
     }
 
-    void recordSpriteCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
-        VkCommandBufferBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = 0; // Optional
-        beginInfo.pInheritanceInfo = nullptr; // Optional
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-            throw std::runtime_error("failed to begin recording command buffer!");
-        }
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = signalSemaphores;
 
-        VkRenderPassBeginInfo renderPassInfo{};
-        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        renderPassInfo.renderPass = renderPass->GetRenderPass();
-        renderPassInfo.framebuffer = swapChain->GetFrameBuffers()[imageIndex];
+    VkSwapchainKHR swapChains[] = { swapChain->GetSwapChain() };
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = swapChains;
+    presentInfo.pImageIndices = &imageIndex;
 
-        renderPassInfo.renderArea.offset = { 0, 0 };
-        renderPassInfo.renderArea.extent = swapChain->GetExtent();
+    presentInfo.pResults = nullptr; // Optional
 
-        std::array<VkClearValue, 2> clearValues{};
-        clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
-        clearValues[1].depthStencil = { 1.0f, 0 };
-        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-        renderPassInfo.pClearValues = clearValues.data();
+    result = vkQueuePresentKHR(device->GetPresentQueue(), &presentInfo);
 
-        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = static_cast<float>(swapChain->GetExtent().width);
-        viewport.height = static_cast<float>(swapChain->GetExtent().height);
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-        VkRect2D scissor{};
-        scissor.offset = { 0, 0 };
-        scissor.extent = swapChain->GetExtent();
-        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->GetPipeline());
-
-        for (int i = 0; i < sprites.size(); i++) {
-
-            VkBuffer vertexBuffers[] = {sprites[i]->GetVertexBuffer()->GetBuffer()};
-            VkDeviceSize offsets[] = { 0 };
-            vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-
-            vkCmdBindIndexBuffer(commandBuffer, sprites[i]->GetIndexBuffer()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-            VkDescriptorSet tempDescSet = sprites[i]->GetDescriptorSets(currentFrame)->GetDescriptorSet();
-
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->GetPipelineLayout(), 0, 1, &tempDescSet, 0, nullptr);
-            vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(RECT_INDICES.size()), 1, 0, 0, 0);
-
-
-
-        }
-        vkCmdEndRenderPass(commandBuffer);
-
-        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-            throw std::runtime_error("failed to record command buffer!");
-        }
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized) {
+        framebufferResized = false;
+        recreateSwapChain();
+    }
+    else if (result != VK_SUCCESS) {
+        throw std::runtime_error("failed to present swap chain image!");
     }
 
-    void createGraphicsPipeline() {
-        graphicsPipeline = std::make_unique<GraphicsPipeline>();
-        graphicsPipeline->AddShaderRaw(VK_SHADER_STAGE_VERTEX_BIT, Utilities::readFile("res/shaders/vert.spv"));
-        graphicsPipeline->AddShaderRaw(VK_SHADER_STAGE_FRAGMENT_BIT, Utilities::readFile("res/shaders/frag.spv"));
-        Vertex v;
-        graphicsPipeline->Init(device->GetDevice(), renderPass->GetRenderPass(), descriptorSetLayout->GetDescriptorSetLayout(), &v);
-        graphicsPipeline2 = std::make_unique<GraphicsPipeline>();
-        graphicsPipeline2->AddShaderRaw(VK_SHADER_STAGE_VERTEX_BIT, Utilities::readFile("res/shaders/vert2.spv"));
-        graphicsPipeline2->AddShaderRaw(VK_SHADER_STAGE_FRAGMENT_BIT, Utilities::readFile("res/shaders/frag2.spv"));
-        graphicsPipeline2->Init(device->GetDevice(), renderPass->GetRenderPass(), descriptorSetLayout->GetDescriptorSetLayout(), &v);
+    currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+void Renderer::recordSpriteCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = 0; // Optional
+    beginInfo.pInheritanceInfo = nullptr; // Optional
+
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+        throw std::runtime_error("failed to begin recording command buffer!");
     }
 
-    void setupDebugMessenger() {
-        if (!enableValidationLayers) return;
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = renderPass->GetRenderPass();
+    renderPassInfo.framebuffer = swapChain->GetFrameBuffers()[imageIndex];
 
-        VkDebugUtilsMessengerCreateInfoEXT createInfo{};
-        populateDebugMessengerCreateInfo(createInfo);
+    renderPassInfo.renderArea.offset = { 0, 0 };
+    renderPassInfo.renderArea.extent = swapChain->GetExtent();
 
-        if (CreateDebugUtilsMessengerEXT(instance->GetInstance(), &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
-            throw std::runtime_error("failed to set up debug messenger!");
-        }
+    std::array<VkClearValue, 2> clearValues{};
+    clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+    clearValues[1].depthStencil = { 1.0f, 0 };
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
+
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(swapChain->GetExtent().width);
+    viewport.height = static_cast<float>(swapChain->GetExtent().height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = swapChain->GetExtent();
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->GetPipeline());
+
+    for (int i = 0; i < sprites.size(); i++) {
+
+        VkBuffer vertexBuffers[] = {sprites[i]->GetVertexBuffer()->GetBuffer()};
+        VkDeviceSize offsets[] = { 0 };
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+
+        vkCmdBindIndexBuffer(commandBuffer, sprites[i]->GetIndexBuffer()->GetBuffer(), 0, VK_INDEX_TYPE_UINT32);
+
+        VkDescriptorSet tempDescSet = sprites[i]->GetDescriptorSets(currentFrame)->GetDescriptorSet();
+
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline->GetPipelineLayout(), 0, 1, &tempDescSet, 0, nullptr);
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(RECT_INDICES.size()), 1, 0, 0, 0);
+
+
+
+    }
+    vkCmdEndRenderPass(commandBuffer);
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to record command buffer!");
+    }
+}
+
+void Renderer::createGraphicsPipeline() {
+    graphicsPipeline = std::make_unique<GraphicsPipeline>();
+    graphicsPipeline->AddShaderRaw(VK_SHADER_STAGE_VERTEX_BIT, Utilities::readFile("res/shaders/vert.spv"));
+    graphicsPipeline->AddShaderRaw(VK_SHADER_STAGE_FRAGMENT_BIT, Utilities::readFile("res/shaders/frag.spv"));
+    Vertex v;
+    graphicsPipeline->Init(device->GetDevice(), renderPass->GetRenderPass(), descriptorSetLayout->GetDescriptorSetLayout(), &v);
+    graphicsPipeline2 = std::make_unique<GraphicsPipeline>();
+    graphicsPipeline2->AddShaderRaw(VK_SHADER_STAGE_VERTEX_BIT, Utilities::readFile("res/shaders/vert2.spv"));
+    graphicsPipeline2->AddShaderRaw(VK_SHADER_STAGE_FRAGMENT_BIT, Utilities::readFile("res/shaders/frag2.spv"));
+    graphicsPipeline2->Init(device->GetDevice(), renderPass->GetRenderPass(), descriptorSetLayout->GetDescriptorSetLayout(), &v);
+}
+
+void Renderer::setupDebugMessenger() {
+    if (!enableValidationLayers) return;
+
+    VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+    populateDebugMessengerCreateInfo(createInfo);
+
+    if (CreateDebugUtilsMessengerEXT(instance->GetInstance(), &createInfo, nullptr, &debugMessenger) != VK_SUCCESS) {
+        throw std::runtime_error("failed to set up debug messenger!");
+    }
+}
+
+void Renderer::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
+    createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    createInfo.pfnUserCallback = debugCallback;
+}
+
+std::vector<const char*> Renderer::getRequiredExtensions() {
+    uint32_t glfwExtensionCount = 0;
+    const char** glfwExtensions;
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+    if (enableValidationLayers) {
+        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
 
-    void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
-        createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-        createInfo.pfnUserCallback = debugCallback;
+    return extensions;
+}
+
+void Renderer::InitWindow() {
+    if (glfwInit() == GLFW_FALSE) {
+        std::cout << "glfw failed to initialize." << std::endl;
     }
 
-    std::vector<const char*> getRequiredExtensions() {
-        uint32_t glfwExtensionCount = 0;
-        const char** glfwExtensions;
-        glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-        std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-
-        if (enableValidationLayers) {
-            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-        }
-
-        return extensions;
-    }
-
-    void InitWindow() {
-        if (glfwInit() == GLFW_FALSE) {
-            std::cout << "glfw failed to initialize." << std::endl;
-        }
-
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 
-        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-        glfwSetWindowUserPointer(window, this);
-        glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+    glfwSetWindowUserPointer(window, this);
+    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-        InputManager::Init(window);
-    }
+    InputManager::Init(window);
+}
 
-    static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-        auto app = reinterpret_cast<Renderer*>(glfwGetWindowUserPointer(window));
-        app->framebufferResized = true;
-    }
+void Renderer::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+    auto app = reinterpret_cast<Renderer*>(glfwGetWindowUserPointer(window));
+    app->framebufferResized = true;
+}
 
-    void InitVulkan() {
+void Renderer::InitVulkan() {
 
-        //create instance
-        VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-        populateDebugMessengerCreateInfo(debugCreateInfo);
-        std::vector<const char*> requiredExtensions = getRequiredExtensions();
-        instance = std::make_unique<Instance>(validationLayers, enableValidationLayers, debugCreateInfo, requiredExtensions);
+    //create instance
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+    populateDebugMessengerCreateInfo(debugCreateInfo);
+    std::vector<const char*> requiredExtensions = getRequiredExtensions();
+    instance = std::make_unique<Instance>(validationLayers, enableValidationLayers, debugCreateInfo, requiredExtensions);
 
 
-        setupDebugMessenger();
+    setupDebugMessenger();
         
-        //create surface
-        surface = std::make_unique<Surface>(instance->GetInstance(), window);
+    //create surface
+    surface = std::make_unique<Surface>(instance->GetInstance(), window);
         
-        //pick physical device
-        physicalDevice = std::make_unique<PhysicalDevice>(instance->GetInstance(), surface->GetSurface(), deviceExtensions);
+    //pick physical device
+    physicalDevice = std::make_unique<PhysicalDevice>(instance->GetInstance(), surface->GetSurface(), deviceExtensions);
         
-        //create logical device
-        device = std::make_unique<Device>(physicalDevice->GetPhysicalDevice(), surface->GetSurface(), enableValidationLayers, deviceExtensions, validationLayers);
+    //create logical device
+    device = std::make_unique<Device>(physicalDevice->GetPhysicalDevice(), surface->GetSurface(), enableValidationLayers, deviceExtensions, validationLayers);
 
-        //create render pass
-        renderPass = std::make_unique<RenderPass>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), surface->GetSurface());
-
-
-        //create swap chain
-        swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), window, surface->GetSurface(), renderPass->GetRenderPass());
+    //create render pass
+    renderPass = std::make_unique<RenderPass>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), surface->GetSurface());
 
 
-        createDescriptorSetLayout();
-        createGraphicsPipeline();
-
-        //create command pool
-        commandPool = std::make_unique<CommandPool>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), surface->GetSurface());
-
-        createDescriptorPool();
-        createSyncObjects();
+    //create swap chain
+    swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), window, surface->GetSurface(), renderPass->GetRenderPass());
 
 
-        sprites.resize(4);
-        for (int i = 0; i < 4; i++) {
+    createDescriptorSetLayout();
+    createGraphicsPipeline();
 
-            sprites[i] = std::make_unique<Sprite>(rectVerts, RECT_INDICES, spriteTextures[i], device->GetDevice(), physicalDevice->GetPhysicalDevice(), device->GetGraphicsQueue(),
-                commandPool->GetCommandPool(), descriptorPool->GetDescriptorPool(), static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT), descriptorSetLayout->GetDescriptorSetLayout());
+    //create command pool
+    commandPool = std::make_unique<CommandPool>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), surface->GetSurface());
+
+    createDescriptorPool();
+    createSyncObjects();
+
+
+    sprites.resize(4);
+    for (int i = 0; i < 4; i++) {
+
+        sprites[i] = std::make_unique<Sprite>(rectVerts, RECT_INDICES, spriteTextures[i], device->GetDevice(), physicalDevice->GetPhysicalDevice(), device->GetGraphicsQueue(),
+            commandPool->GetCommandPool(), descriptorPool->GetDescriptorPool(), static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT), descriptorSetLayout->GetDescriptorSetLayout());
             
             
-        }
+    }
         
-        //add frame rendering command buffers
-        commandPool->AddCommandBuffer(COMMAND_BUFFER_ID_GRAPHICS_RENDER, MAX_FRAMES_IN_FLIGHT, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-        commandPool->AddCommandBuffer(COMMAND_BUFFER_ID_SPRITES_RENDER, MAX_FRAMES_IN_FLIGHT, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-    }
+    //add frame rendering command buffers
+    commandPool->AddCommandBuffer(COMMAND_BUFFER_ID_GRAPHICS_RENDER, MAX_FRAMES_IN_FLIGHT, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    commandPool->AddCommandBuffer(COMMAND_BUFFER_ID_SPRITES_RENDER, MAX_FRAMES_IN_FLIGHT, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+}
 
-    void createDescriptorPool() {
+void Renderer::createDescriptorPool() {
 
-        descriptorPool = std::make_unique<DescriptorPool>(device->GetDevice());
+    descriptorPool = std::make_unique<DescriptorPool>(device->GetDevice());
 
-        descriptorPool->AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT);
-        descriptorPool->AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT);
+    descriptorPool->AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT);
+    descriptorPool->AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT);
 
-        descriptorPool->Init(100);
-    }
+    descriptorPool->Init(100);
+}
 
-    void createDescriptorSetLayout() {
+void Renderer::createDescriptorSetLayout() {
 
-        descriptorSetLayout = std::make_unique<DescriptorSetLayout>(device->GetDevice());
-        descriptorSetLayout->AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT);
-        descriptorSetLayout->AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
-        descriptorSetLayout->Init();
-    }
+    descriptorSetLayout = std::make_unique<DescriptorSetLayout>(device->GetDevice());
+    descriptorSetLayout->AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT);
+    descriptorSetLayout->AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+    descriptorSetLayout->Init();
+}
 
-    void AddSprite(std::string texPath) {
+void Renderer::AddSprite(std::string texPath) {
 
-        sprites.emplace_back(std::make_unique<Sprite>(rectVerts, RECT_INDICES, texPath, device->GetDevice(), physicalDevice->GetPhysicalDevice(), device->GetGraphicsQueue(),
-            commandPool->GetCommandPool(), descriptorPool->GetDescriptorPool(), static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT), descriptorSetLayout->GetDescriptorSetLayout()));
+    sprites.emplace_back(std::make_unique<Sprite>(rectVerts, RECT_INDICES, texPath, device->GetDevice(), physicalDevice->GetPhysicalDevice(), device->GetGraphicsQueue(),
+        commandPool->GetCommandPool(), descriptorPool->GetDescriptorPool(), static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT), descriptorSetLayout->GetDescriptorSetLayout()));
 
-    }
+}
 
-    void Render() {
+void Renderer::Render() {
 
-        //delta-time storage
-        std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
-        std::chrono::duration<float> elapsed;
+    //delta-time storage
+    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
+    std::chrono::duration<float> elapsed;
         
-        //used to test how many frames per second
-        double d = 0.0;
-        int framesCount = 0;
+    //used to test how many frames per second
+    double d = 0.0;
+    int framesCount = 0;
 
-        //main game loop
-        while (!glfwWindowShouldClose(window)) {
+    //main game loop
+    while (!glfwWindowShouldClose(window)) {
 
-            start = std::chrono::high_resolution_clock::now();
+        start = std::chrono::high_resolution_clock::now();
             
-            //poll inputs
-            InputManager::Poll(window);
+        //poll inputs
+        InputManager::Poll(window);
             
-            //update logic and draw
-            Camera::Update(elapsed.count());
+        //update logic and draw
+        Camera::Update(elapsed.count());
 
-            updateUniformBuffer(currentFrame, d);
+        updateUniformBuffer(currentFrame, d);
 
-            drawFrame();
+        drawFrame();
             
             
-            end = std::chrono::high_resolution_clock::now();
+        end = std::chrono::high_resolution_clock::now();
             
-            //calc delta time
-            elapsed = (end - start);
+        //calc delta time
+        elapsed = (end - start);
 
-            //framerate calculation
-            d += elapsed.count();
-            framesCount++;
-            if (d > std::chrono::seconds(1).count()) {
-                d -= std::chrono::seconds(1).count();
-                std::cout << framesCount << std::endl;
-                framesCount = 0;
-            }
-
-            //exit program on escape
-            if (InputManager::GetKeyState(GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-                break;
-            }
+        //framerate calculation
+        d += elapsed.count();
+        framesCount++;
+        if (d > std::chrono::seconds(1).count()) {
+            d -= std::chrono::seconds(1).count();
+            std::cout << framesCount << std::endl;
+            framesCount = 0;
         }
 
-        vkDeviceWaitIdle(device->GetDevice());
+        //exit program on escape
+        if (InputManager::GetKeyState(GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+            break;
+        }
     }
-};
+
+    vkDeviceWaitIdle(device->GetDevice());
+}
+
 
 int main() {
     Renderer app;
