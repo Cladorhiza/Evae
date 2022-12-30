@@ -1,7 +1,7 @@
 #pragma once
 #include "../Component.h"
-#include "glm.hpp"
-#include "gtx/transform.hpp"
+#include "glm/glm.hpp"
+#include "glm/gtx/transform.hpp"
 class TransformComponent :
     protected Component
 {

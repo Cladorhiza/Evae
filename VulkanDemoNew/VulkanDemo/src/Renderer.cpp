@@ -38,7 +38,6 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 void Renderer::Init() {
     InitWindow();
     InitVulkan();
-    Render();
 }
 
 Renderer::~Renderer() {
@@ -97,7 +96,7 @@ void Renderer::recreateSwapChain() {
 void Renderer::updateUniformBuffer(uint32_t currentImage, float deltaTime) {
 
     Sprite::UniformBufferObject ubo{};
-    ubo.view = Camera::getViewingMatrix();
+    ubo.view = camera.getViewingMatrix();
     ubo.proj = glm::perspective(glm::radians(45.0f), swapChain->GetExtent().width / (float)swapChain->GetExtent().height, 0.1f, 500.0f);
     ubo.proj[1][1] *= -1;
 
@@ -245,15 +244,19 @@ void Renderer::recordSpriteCommandBuffer(VkCommandBuffer commandBuffer, uint32_t
 }
 
 void Renderer::createGraphicsPipeline() {
+
+    std::filesystem::path fragFile = "frag.spv";
+    std::filesystem::path fragCompletePath = shaderPath/fragFile;
+    std::filesystem::path vertFile = "vert.spv";
+    std::filesystem::path vertCompletePath = shaderPath/vertFile;
+
+
+
     graphicsPipeline = std::make_unique<GraphicsPipeline>();
-    graphicsPipeline->AddShaderRaw(VK_SHADER_STAGE_VERTEX_BIT, Utilities::readFile("res/shaders/vert.spv"));
-    graphicsPipeline->AddShaderRaw(VK_SHADER_STAGE_FRAGMENT_BIT, Utilities::readFile("res/shaders/frag.spv"));
+    graphicsPipeline->AddShaderRaw(VK_SHADER_STAGE_VERTEX_BIT, Utilities::readFile(vertCompletePath.string()));
+    graphicsPipeline->AddShaderRaw(VK_SHADER_STAGE_FRAGMENT_BIT, Utilities::readFile(fragCompletePath.string()));
     Vertex v;
     graphicsPipeline->Init(device->GetDevice(), renderPass->GetRenderPass(), descriptorSetLayout->GetDescriptorSetLayout(), &v);
-    graphicsPipeline2 = std::make_unique<GraphicsPipeline>();
-    graphicsPipeline2->AddShaderRaw(VK_SHADER_STAGE_VERTEX_BIT, Utilities::readFile("res/shaders/vert2.spv"));
-    graphicsPipeline2->AddShaderRaw(VK_SHADER_STAGE_FRAGMENT_BIT, Utilities::readFile("res/shaders/frag2.spv"));
-    graphicsPipeline2->Init(device->GetDevice(), renderPass->GetRenderPass(), descriptorSetLayout->GetDescriptorSetLayout(), &v);
 }
 
 void Renderer::setupDebugMessenger() {
@@ -302,7 +305,7 @@ void Renderer::InitWindow() {
     glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    InputManager::Init(window);
+    inputManager.Init(window);
 }
 
 void Renderer::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
@@ -346,17 +349,9 @@ void Renderer::InitVulkan() {
 
     createDescriptorPool();
     createSyncObjects();
+    
+    sprites.reserve(100);
 
-
-    sprites.resize(4);
-    for (int i = 0; i < 4; i++) {
-
-        sprites[i] = std::make_unique<Sprite>(rectVerts, RECT_INDICES, spriteTextures[i], device->GetDevice(), physicalDevice->GetPhysicalDevice(), device->GetGraphicsQueue(),
-            commandPool->GetCommandPool(), descriptorPool->GetDescriptorPool(), static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT), descriptorSetLayout->GetDescriptorSetLayout());
-            
-            
-    }
-        
     //add frame rendering command buffers
     commandPool->AddCommandBuffer(COMMAND_BUFFER_ID_GRAPHICS_RENDER, MAX_FRAMES_IN_FLIGHT, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
     commandPool->AddCommandBuffer(COMMAND_BUFFER_ID_SPRITES_RENDER, MAX_FRAMES_IN_FLIGHT, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
@@ -403,10 +398,10 @@ void Renderer::Render() {
         start = std::chrono::high_resolution_clock::now();
             
         //poll inputs
-        InputManager::Poll(window);
+        inputManager.Poll(window);
             
         //update logic and draw
-        Camera::Update(elapsed.count());
+        camera.Update(elapsed.count(), inputManager);
 
         updateUniformBuffer(currentFrame, d);
 
@@ -428,25 +423,10 @@ void Renderer::Render() {
         }
 
         //exit program on escape
-        if (InputManager::GetKeyState(GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        if (inputManager.GetKeyState(GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             break;
         }
     }
 
     vkDeviceWaitIdle(device->GetDevice());
-}
-
-
-int main() {
-    Renderer app;
-
-    try {
-        app.Init();
-    }
-    catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
 }

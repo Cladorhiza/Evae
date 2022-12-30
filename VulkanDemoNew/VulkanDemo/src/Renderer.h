@@ -48,6 +48,7 @@
 #include <fstream>
 #include <array>
 #include <memory>
+#include <filesystem>
 
 class Renderer {
 
@@ -59,14 +60,7 @@ private:
     const uint32_t COMMAND_BUFFER_ID_GRAPHICS_RENDER = 0;
     const uint32_t COMMAND_BUFFER_ID_SPRITES_RENDER = 1;
     const std::vector<uint32_t> RECT_INDICES{ 1,2,0,3,0,2 };
-
-    const std::array<std::string, 4> spriteTextures{
-        "res/textures/bruno.png",
-        "res/textures/theboys.jpg",
-        "res/textures/grass.png",
-        "res/textures/viking_room.png"
-    };
-
+    const std::filesystem::path shaderPath = "../VulkanDemo/res/shaders/";
 
     Vertex v1{ glm::vec3(0.f, 0.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(0.f, 1.f) };
     Vertex v2{ glm::vec3(1.f, 0.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(1.f, 1.f) };
@@ -113,17 +107,19 @@ private:
     std::unique_ptr<RenderPass> renderPass;
     std::unique_ptr<SwapChain> swapChain;
     std::unique_ptr<GraphicsPipeline> graphicsPipeline;
-    std::unique_ptr<GraphicsPipeline> graphicsPipeline2;
     std::unique_ptr<DescriptorSetLayout> descriptorSetLayout;
     std::unique_ptr<CommandPool> commandPool;
     std::unique_ptr<DescriptorPool> descriptorPool;
     std::vector<std::unique_ptr<DescriptorSet>> descriptorSets;
 
+    //rendering loop items
     std::vector<std::unique_ptr<Sprite>> sprites;
 
     bool framebufferResized = false;
     uint32_t currentFrame = 0;
 
+    Camera camera;
+    InputManager inputManager;
 
     void createSyncObjects();
     void recreateSwapChain();
@@ -139,12 +135,12 @@ private:
     void InitVulkan();
     void createDescriptorPool();
     void createDescriptorSetLayout();
-    void AddSprite(std::string texPath);
 
 public:
 
     void Init();
     void Render();
+    void AddSprite(std::string texPath);
     ~Renderer();
 
 };

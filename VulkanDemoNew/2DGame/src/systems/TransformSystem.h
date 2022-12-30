@@ -1,6 +1,6 @@
 #pragma once
-#include "glm.hpp"
-#include "gtx/transform.hpp"
+#include "glm/glm.hpp"
+#include "glm/gtx/transform.hpp"
 #include "../components/TransformComponent.h"
 
 #include <vector>
