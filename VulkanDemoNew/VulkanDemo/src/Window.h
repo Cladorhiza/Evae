@@ -19,10 +19,13 @@ private:
 	//in pixels
 	int width;
 	int height;
+	//mouse scroll axis
+	double scrollYAxisOffset;
 	
+
 	
 	static void FramebufferResizeCallback(GLFWwindow* window, int width, int height);
-
+	static void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 public:
 
 	~Window();
@@ -30,9 +33,12 @@ public:
 	GLFWwindow* GetWindow() { return window; }
 	int GetWidth() { return width; }
 	int GetHeight() { return height; }
-
+	double GetScrollYOffSet() { return scrollYAxisOffset; }
+	bool WindowShouldClose() { return glfwWindowShouldClose(window); }
+	
+	
+	void PollEvents();
 	void Init(uint32_t width, uint32_t height);
 	static std::vector<const char*> GetRequiredExtensions();
-
 };
 

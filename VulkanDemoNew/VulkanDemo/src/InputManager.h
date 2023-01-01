@@ -1,5 +1,8 @@
 #pragma once
+#include "Window.h"
+
 #include <GLFW/glfw3.h>
+
 #include <unordered_map>
 
 
@@ -7,6 +10,9 @@ class InputManager
 {
 private:
 
+	Window window;
+	GLFWwindow* pWindow;
+	
 	//all keycodes that need to be tracked
 	const std::vector<int> usedKeys{
 		GLFW_KEY_W,
@@ -37,9 +43,8 @@ private:
 
 public:
 
-	void Init(GLFWwindow* window);
-	void Poll(GLFWwindow* window);
-	//friend void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
+	InputManager();
+	InputManager(Window& GLFWwindow);
 
 	int GetKeyState(int GLFWKeyCode) { return keys[GLFWKeyCode]; }
 	bool GetKeyToggle(int GLFWKeyCode) { return keyToggle[GLFWKeyCode]; }
@@ -48,5 +53,8 @@ public:
 	float GetMouseScrollYOffset() { return (float)scrollYAxisOffset; }
 	float GetDeltaMouseX() { return (float)(cursorXPos - cursorOldXPos); }
 	float GetDeltaMouseY() { return (float)(cursorYPos - cursorOldYPos); }
+
+	void Init(Window& GLFWwindow);
+	void Poll();
 
 };

@@ -25,6 +25,16 @@ void Window::FramebufferResizeCallback(GLFWwindow* window, int width, int height
     app->height = height;
 }
 
+void Window::ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+{
+    auto app = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+    app->scrollYAxisOffset += yoffset;
+}
+
+void Window::PollEvents() {
+    glfwPollEvents();
+}
+
 std::vector<const char*> Window::GetRequiredExtensions() {
 
     uint32_t glfwExtensionCount = 0;

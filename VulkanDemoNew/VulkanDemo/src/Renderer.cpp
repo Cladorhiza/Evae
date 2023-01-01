@@ -37,6 +37,7 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 
 void Renderer::Init() {
     GLFWwindow.Init(WIDTH, HEIGHT);
+    inputManager.Init(GLFWwindow);
     InitVulkan();
 }
 
@@ -81,11 +82,6 @@ void Renderer::recreateSwapChain() {
     int width = GLFWwindow.GetWidth();
     int height = GLFWwindow.GetHeight();
 
-    //while (width == 0 || height == 0) {
-    //    
-    //    glfwWaitEvents();
-    //}
-
     vkDeviceWaitIdle(device->GetDevice());
 
     swapChain.reset();
@@ -102,11 +98,9 @@ void Renderer::updateUniformBuffer(uint32_t currentImage, float deltaTime) {
     for (int i{ 0 }; i < sprites.size(); i++) {
         ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(i+deltaTime, 0.0f, 0.0f));
 
-        for (int j{ 0 }; j < MAX_FRAMES_IN_FLIGHT; j++) {
-
-            UniformBuffer* spriteUbo = sprites[i]->GetUniformBuffers(j);
-            memcpy(spriteUbo->GetBufferMappedMemory(), &ubo, sizeof(ubo));
-        }
+        UniformBuffer* spriteUbo = sprites[i]->GetUniformBuffers(currentImage);
+        memcpy(spriteUbo->GetBufferMappedMemory(), &ubo, sizeof(ubo));
+        
     }
 }
 
@@ -368,13 +362,14 @@ void Renderer::Render() {
     int framesCount = 0;
 
     //main game loop
-    while (!glfwWindowShouldClose(GLFWwindow.GetWindow())) {
+    while (!GLFWwindow.WindowShouldClose()) {
 
         start = std::chrono::high_resolution_clock::now();
             
         //poll inputs
-        inputManager.Poll(GLFWwindow.GetWindow());
-            
+        GLFWwindow.PollEvents();
+        inputManager.Poll();
+        
         //update logic and draw
         camera.Update(elapsed.count(), inputManager);
 

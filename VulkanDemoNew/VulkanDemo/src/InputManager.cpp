@@ -1,32 +1,39 @@
 #include "InputManager.h"
 
+InputManager::InputManager() 
+	:window(), pWindow(nullptr)
+{
 
-//void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
-//{
-//	scrollYAxisOffset += yoffset;
-//}
-void InputManager::Init(GLFWwindow* window) {
-	//glfwSetScrollCallback(window, ScrollCallback);
+
 }
 
-void InputManager::Poll(GLFWwindow* window) {
-	//updates glfw keys
-	glfwPollEvents();
+InputManager::InputManager(Window& GLFWwindow) {
+
+	Init(GLFWwindow);
+
+}
+
+void InputManager::Init(Window& GLFWwindow) {
+	window = GLFWwindow;
+	pWindow = GLFWwindow.GetWindow();
+}
+
+void InputManager::Poll() {
+	scrollYAxisOffset = window.GetScrollYOffSet();
 
 	//updates state of keys
-
 	for (int keyName : usedKeys) {
-		int state = glfwGetKey(window, keyName);
+		int state = glfwGetKey(pWindow, keyName);
 		if (state != keys[keyName] && keys[keyName] == GLFW_RELEASE) keyToggle[keyName] = true;
 		else keyToggle[keyName] = false;
 		keys[keyName] = state;
 	}
-	keys[GLFW_MOUSE_BUTTON_LEFT] = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
-	keys[GLFW_MOUSE_BUTTON_RIGHT] = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT);
+	keys[GLFW_MOUSE_BUTTON_LEFT] = glfwGetMouseButton(pWindow, GLFW_MOUSE_BUTTON_LEFT);
+	keys[GLFW_MOUSE_BUTTON_RIGHT] = glfwGetMouseButton(pWindow, GLFW_MOUSE_BUTTON_RIGHT);
 
 	//update cursor position
 	cursorOldXPos = cursorXPos;
 	cursorOldYPos = cursorYPos;
-	glfwGetCursorPos(window, &cursorXPos, &cursorYPos);
+	glfwGetCursorPos(pWindow, &cursorXPos, &cursorYPos);
 
 }
