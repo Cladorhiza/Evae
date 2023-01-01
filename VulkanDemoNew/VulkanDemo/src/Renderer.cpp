@@ -36,7 +36,7 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 
 
 void Renderer::Init() {
-    InitWindow();
+    GLFWwindow.Init(WIDTH, HEIGHT);
     InitVulkan();
 }
 
@@ -51,8 +51,6 @@ Renderer::~Renderer() {
         vkDestroySemaphore(device->GetDevice(), imageAvailableSemaphores[i], nullptr);
         vkDestroyFence(device->GetDevice(), inFlightFences[i], nullptr);
     }
-    glfwDestroyWindow(window);
-    glfwTerminate();
 }
 
 
@@ -80,17 +78,18 @@ void Renderer::createSyncObjects() {
 
 
 void Renderer::recreateSwapChain() {
-    int width = 0, height = 0;
-    glfwGetFramebufferSize(window, &width, &height);
-    while (width == 0 || height == 0) {
-        glfwGetFramebufferSize(window, &width, &height);
-        glfwWaitEvents();
-    }
+    int width = GLFWwindow.GetWidth();
+    int height = GLFWwindow.GetHeight();
+
+    //while (width == 0 || height == 0) {
+    //    
+    //    glfwWaitEvents();
+    //}
 
     vkDeviceWaitIdle(device->GetDevice());
 
     swapChain.reset();
-    swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), window, surface->GetSurface(), renderPass->GetRenderPass());
+    swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), GLFWwindow.GetWindow(), surface->GetSurface(), renderPass->GetRenderPass());
 }
 
 void Renderer::updateUniformBuffer(uint32_t currentImage, float deltaTime) {
@@ -279,38 +278,14 @@ void Renderer::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoE
 }
 
 std::vector<const char*> Renderer::getRequiredExtensions() {
-    uint32_t glfwExtensionCount = 0;
-    const char** glfwExtensions;
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+    std::vector<const char*> extensions = Window::GetRequiredExtensions();
 
     if (enableValidationLayers) {
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
 
     return extensions;
-}
-
-void Renderer::InitWindow() {
-    if (glfwInit() == GLFW_FALSE) {
-        std::cout << "glfw failed to initialize." << std::endl;
-    }
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-
-    window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
-    glfwSetWindowUserPointer(window, this);
-    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-    inputManager.Init(window);
-}
-
-void Renderer::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-    auto app = reinterpret_cast<Renderer*>(glfwGetWindowUserPointer(window));
-    app->framebufferResized = true;
 }
 
 void Renderer::InitVulkan() {
@@ -325,7 +300,7 @@ void Renderer::InitVulkan() {
     setupDebugMessenger();
         
     //create surface
-    surface = std::make_unique<Surface>(instance->GetInstance(), window);
+    surface = std::make_unique<Surface>(instance->GetInstance(), GLFWwindow.GetWindow());
         
     //pick physical device
     physicalDevice = std::make_unique<PhysicalDevice>(instance->GetInstance(), surface->GetSurface(), deviceExtensions);
@@ -338,7 +313,7 @@ void Renderer::InitVulkan() {
 
 
     //create swap chain
-    swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), window, surface->GetSurface(), renderPass->GetRenderPass());
+    swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), GLFWwindow.GetWindow(), surface->GetSurface(), renderPass->GetRenderPass());
 
 
     createDescriptorSetLayout();
@@ -364,7 +339,7 @@ void Renderer::createDescriptorPool() {
     descriptorPool->AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT);
     descriptorPool->AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT);
 
-    descriptorPool->Init(100);
+    descriptorPool->Init(1000);
 }
 
 void Renderer::createDescriptorSetLayout() {
@@ -393,12 +368,12 @@ void Renderer::Render() {
     int framesCount = 0;
 
     //main game loop
-    while (!glfwWindowShouldClose(window)) {
+    while (!glfwWindowShouldClose(GLFWwindow.GetWindow())) {
 
         start = std::chrono::high_resolution_clock::now();
             
         //poll inputs
-        inputManager.Poll(window);
+        inputManager.Poll(GLFWwindow.GetWindow());
             
         //update logic and draw
         camera.Update(elapsed.count(), inputManager);

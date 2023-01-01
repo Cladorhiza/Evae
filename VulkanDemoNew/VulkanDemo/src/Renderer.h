@@ -22,6 +22,7 @@
 #include "DescriptorPool.h"
 #include "DescriptorSet.h"
 #include "Sprite.h"
+#include "Window.h"
 
 //third party
 #include "tinyobj/tiny_obj_loader.h"
@@ -91,7 +92,7 @@ private:
 
 
     //application specific
-    GLFWwindow* window;
+    Window GLFWwindow;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
 
     //sync objects
@@ -130,8 +131,6 @@ private:
     void setupDebugMessenger();
     void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
     std::vector<const char*> getRequiredExtensions();
-    static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
-    void InitWindow();
     void InitVulkan();
     void createDescriptorPool();
     void createDescriptorSetLayout();
