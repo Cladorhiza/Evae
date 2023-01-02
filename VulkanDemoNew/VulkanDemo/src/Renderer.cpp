@@ -37,7 +37,6 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 
 void Renderer::Init() {
     GLFWwindow.Init(WIDTH, HEIGHT);
-    inputManager.Init(GLFWwindow);
     InitVulkan();
 }
 
@@ -86,20 +85,25 @@ void Renderer::recreateSwapChain() {
 
     swapChain.reset();
     swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), GLFWwindow.GetWindow(), surface->GetSurface(), renderPass->GetRenderPass());
+    
 }
 
-void Renderer::updateUniformBuffer(uint32_t currentImage, float deltaTime) {
-
-    Sprite::UniformBufferObject ubo{};
-    ubo.view = camera.getViewingMatrix();
-    ubo.proj = glm::perspective(glm::radians(45.0f), swapChain->GetExtent().width / (float)swapChain->GetExtent().height, 0.1f, 500.0f);
-    ubo.proj[1][1] *= -1;
+void Renderer::UpdateSpriteModelMatrixes(std::vector<glm::mat4> spriteModelMats) {
 
     for (int i{ 0 }; i < sprites.size(); i++) {
-        ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(i+deltaTime, 0.0f, 0.0f));
 
-        UniformBuffer* spriteUbo = sprites[i]->GetUniformBuffers(currentImage);
-        memcpy(spriteUbo->GetBufferMappedMemory(), &ubo, sizeof(ubo));
+        sprites[i]->SetModelMatrix(spriteModelMats[i]);
+
+    }
+}
+
+void Renderer::UpdateUniformBuffers() {
+
+    for (int i{ 0 }; i < sprites.size(); i++) {
+        mvpUbo.model = sprites[i]->GetModelMatrix();
+
+        UniformBuffer* spriteUbo = sprites[i]->GetUniformBuffers(currentFrame);
+        memcpy(spriteUbo->GetBufferMappedMemory(), &mvpUbo, sizeof(mvpUbo));
         
     }
 }
@@ -308,7 +312,7 @@ void Renderer::InitVulkan() {
 
     //create swap chain
     swapChain = std::make_unique<SwapChain>(device->GetDevice(), physicalDevice->GetPhysicalDevice(), GLFWwindow.GetWindow(), surface->GetSurface(), renderPass->GetRenderPass());
-
+    
 
     createDescriptorSetLayout();
     createGraphicsPipeline();
@@ -353,50 +357,9 @@ void Renderer::AddSprite(std::string texPath) {
 
 void Renderer::Render() {
 
-    //delta-time storage
-    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
-    std::chrono::duration<float> elapsed;
-        
-    //used to test how many frames per second
-    double d = 0.0;
-    int framesCount = 0;
+    UpdateUniformBuffers();
 
-    //main game loop
-    while (!GLFWwindow.WindowShouldClose()) {
-
-        start = std::chrono::high_resolution_clock::now();
-            
-        //poll inputs
-        GLFWwindow.PollEvents();
-        inputManager.Poll();
-        
-        //update logic and draw
-        camera.Update(elapsed.count(), inputManager);
-
-        updateUniformBuffer(currentFrame, d);
-
-        drawFrame();
-            
-            
-        end = std::chrono::high_resolution_clock::now();
-            
-        //calc delta time
-        elapsed = (end - start);
-
-        //framerate calculation
-        d += elapsed.count();
-        framesCount++;
-        if (d > std::chrono::seconds(1).count()) {
-            d -= std::chrono::seconds(1).count();
-            std::cout << framesCount << std::endl;
-            framesCount = 0;
-        }
-
-        //exit program on escape
-        if (inputManager.GetKeyState(GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-            break;
-        }
-    }
+    drawFrame();
 
     vkDeviceWaitIdle(device->GetDevice());
 }

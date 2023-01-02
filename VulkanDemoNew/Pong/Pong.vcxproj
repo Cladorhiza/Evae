@@ -141,7 +141,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\systems\AIControllerPaddleSystem.cpp" />
+    <ClCompile Include="src\components\AIControllerPaddleComponent.cpp" />
+    <ClCompile Include="src\systems\PlayerControllerPaddleSystem.cpp" />
+    <ClCompile Include="src\components\PlayerControllerPaddleComponent.cpp" />
     <ClCompile Include="src\Application.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\systems\AIControllerPaddleSystem.h" />
+    <ClInclude Include="src\components\AIControllerPaddleComponent.h" />
+    <ClInclude Include="src\systems\PlayerControllerPaddleSystem.h" />
+    <ClInclude Include="src\components\PlayerControllerPaddleComponent.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

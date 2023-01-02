@@ -1,8 +1,10 @@
 #include "Window.h"
 
 
-void Window::Init(uint32_t width, uint32_t height) {
+void Window::Init(uint32_t w, uint32_t h) {
 
+    width = w;
+    height = h;
 
     if (glfwInit() == GLFW_FALSE) {
         std::cout << "glfw failed to initialize." << std::endl;
@@ -23,6 +25,11 @@ void Window::FramebufferResizeCallback(GLFWwindow* window, int width, int height
     app->framebufferResized = true;
     app->width = width;
     app->height = height;
+    while (app->width == 0) {
+        glfwWaitEvents();
+        app->width = width;
+        app->height = height;
+    }
 }
 
 void Window::ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)

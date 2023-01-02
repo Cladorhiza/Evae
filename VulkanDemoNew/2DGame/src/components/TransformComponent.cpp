@@ -3,7 +3,7 @@
 TransformComponent::TransformComponent() 
 	:transform(1.0f), position(0.0f), rotation(0.0f), scale(1.0)
 {
-
+	
 }
 
 void TransformComponent::SetPosition(const glm::vec3& newPosition) {

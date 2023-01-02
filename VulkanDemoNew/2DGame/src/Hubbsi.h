@@ -1,0 +1,13 @@
+#pragma once
+#include "Scene.h"
+#include "Renderer.h"
+#include "Camera.h"
+#include "InputManager.h"
+#include "Entity.h"
+#include "Component.h";
+#include "components/TransformComponent.h"
+#include "systems/TransformSystem.h"
+#include "components/SpriteComponent.h"
+#include "systems/SpriteSystem.h"
+#include "components/PhysicsComponent2D.h"
+#include "systems/PhysicsSystem.h"

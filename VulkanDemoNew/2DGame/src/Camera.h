@@ -13,6 +13,8 @@ class Camera
 {
 	
 private:
+	Window window;
+
 	const float CLAMP_Y = 89.95F;
 	static const glm::vec3 DEFAULT_POSITION; //default position.
 	glm::vec3 worldUp;
@@ -28,13 +30,22 @@ private:
 	float speed = 5.f;
 	float sensitivity = .05f;
 
+	float left = -8.f;
+	float right = 8.f;
+	float top = 4.5f;
+	float bottom = -4.5f;
+	bool orthographic;
+
 public:
 
-	Camera();
+	Camera(Window& window);
 	void Update(float timeStep, InputManager& inputManager);
-	const glm::vec3& getCameraPosition() { return position; }
-	const glm::vec3& getCameraTarget() { return cameraForward; }
-	glm::mat4 getViewingMatrix();
+	const glm::vec3& GetCameraPosition() { return position; }
+	const glm::vec3& GetCameraTarget() { return cameraForward; }
+	glm::mat4 GetViewingMatrix();
+	glm::mat4 GetProjectionMatrix();
+	void SetOrthographic(bool ortho) { orthographic = ortho; }
+
 	bool SphereAxisAllignedCuboidCollision(glm::vec3 spherePos, float sphereRadius, glm::vec3 cuboidOriginPos, glm::vec3 cuboidSideLengths);
 };
 

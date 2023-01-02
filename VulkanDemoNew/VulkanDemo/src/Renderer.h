@@ -2,13 +2,11 @@
 
 //project files
 #include "VkHelpers.h"
-#include "InputManager.h"
 #include "Texture2D.h"
 #include "Vertex.h"
 #include "VertexBuffer.h"
 #include "IndexBuffer.h"
 #include "UniformBuffer.h"
-#include "Camera.h"
 #include "Utilities.h"
 #include "GraphicsPipeline.h"
 #include "SwapChain.h"
@@ -63,10 +61,10 @@ private:
     const std::vector<uint32_t> RECT_INDICES{ 1,2,0,3,0,2 };
     const std::filesystem::path shaderPath = "../VulkanDemo/res/shaders/";
 
-    Vertex v1{ glm::vec3(0.f, 0.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(0.f, 1.f) };
-    Vertex v2{ glm::vec3(1.f, 0.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(1.f, 1.f) };
-    Vertex v3{ glm::vec3(1.f, 1.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(1.f, 0.f) };
-    Vertex v4{ glm::vec3(0.f, 1.f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(0.f, 0.f) };
+    Vertex v1{ glm::vec3(-0.5f, -0.5f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(0.f, 1.f) };
+    Vertex v2{ glm::vec3(0.5f, -0.5f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(1.f, 1.f) };
+    Vertex v3{ glm::vec3(0.5f, 0.5f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(1.f, 0.f) };
+    Vertex v4{ glm::vec3(-0.5f, 0.5f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(0.f, 0.f) };
 
     const std::vector<Vertex> rectVerts{
         v1,
@@ -115,16 +113,14 @@ private:
 
     //rendering loop items
     std::vector<std::unique_ptr<Sprite>> sprites;
+    Sprite::UniformBufferObject mvpUbo;
 
     bool framebufferResized = false;
     uint32_t currentFrame = 0;
 
-    Camera camera;
-    InputManager inputManager;
-
     void createSyncObjects();
     void recreateSwapChain();
-    void updateUniformBuffer(uint32_t currentImage, float deltaTime);
+    void UpdateUniformBuffers();
     void drawFrame();
     void recordSpriteCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     void createGraphicsPipeline();
@@ -137,9 +133,15 @@ private:
 
 public:
 
+    ~Renderer();
+
+    Window& GetWindow() { return GLFWwindow; }
+    void SetViewMatrix(glm::mat4 viewMatrix) { mvpUbo.view = viewMatrix; }
+    void SetProjMatrix(glm::mat4 projMatrix) { mvpUbo.proj = projMatrix; }
+
     void Init();
     void Render();
     void AddSprite(std::string texPath);
-    ~Renderer();
+    void UpdateSpriteModelMatrixes(std::vector<glm::mat4> spriteModelMats);
 
 };

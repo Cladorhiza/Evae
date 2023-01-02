@@ -4,17 +4,19 @@
 #include "../components/TransformComponent.h"
 
 #include <vector>
+#include <unordered_map>
 class TransformSystem
 {
-protected:
+private:
 
-	std::vector<std::pair<uint32_t,TransformComponent>> transformComponents;
+	std::unordered_map<uint32_t,TransformComponent> transformComponents;
 
 
 public:
 
 	TransformSystem();
 	void AddTransformComponent(uint32_t id);
+	TransformComponent& GetTransformComponent(uint32_t id) { return transformComponents[id]; }
 
 };
 
