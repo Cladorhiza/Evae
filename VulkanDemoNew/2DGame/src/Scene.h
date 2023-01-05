@@ -20,7 +20,7 @@ public:
 	//order of declaration matters: transform above all other systems
 	TransformSystem transformSystem;
 	SpriteSystem spriteSystem;
-
+	
 	Scene();
 
 	Entity& GetEntity(uint32_t id);

@@ -4,7 +4,8 @@
 #include "Camera.h"
 #include "InputManager.h"
 #include "Entity.h"
-#include "Component.h";
+#include "Component.h"
+#include "Collisions.h"
 #include "components/TransformComponent.h"
 #include "systems/TransformSystem.h"
 #include "components/SpriteComponent.h"

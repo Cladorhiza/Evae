@@ -19,4 +19,3 @@ public:
 	void SetBallTransform(TransformComponent* ball) { ballTransform = ball; }
 	void Update(float deltaTime);
 };
-

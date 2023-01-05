@@ -1,6 +1,6 @@
 #include "Scene.h"
 
-Scene::Scene() 
+Scene::Scene()
 	:nextID(0), transformSystem{}, spriteSystem(&transformSystem)
 {
 
