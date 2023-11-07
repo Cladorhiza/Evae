@@ -8,10 +8,10 @@ void PlayerControllerPaddleSystem::AddComponent(uint32_t id, int keyUp, int keyD
 
 }
 
-void PlayerControllerPaddleSystem::Init(InputManager* inputManager, Scene* scene) {
+void PlayerControllerPaddleSystem::Init(InputManager* inputManager, TransformSystem* transformSystem) {
 
 	this->inputManager = inputManager;
-	this->scene = scene;
+	this->transformSystem = transformSystem;
 }
 
 void PlayerControllerPaddleSystem::Update(float deltaTime) {
@@ -19,7 +19,7 @@ void PlayerControllerPaddleSystem::Update(float deltaTime) {
 	for (const auto& comp : components) {
 
 		glm::vec3 translation(0.f);
-		TransformComponent& t = scene->transformSystem.GetTransformComponent(comp.first);
+		TransformComponent& t = transformSystem->GetTransformComponent(comp.first);
 
 		if (inputManager->GetKeyState(comp.second.upKeyBind) == GLFW_PRESS) {
 			translation.y += comp.second.paddleSpeed * deltaTime;

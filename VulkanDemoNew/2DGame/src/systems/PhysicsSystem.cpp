@@ -51,6 +51,8 @@ void PhysicsSystem::Update(float timeStep) {
 			if (Collisions::IsCollidingAABB(t1v.x - t1SideLength.x, t1v.x + t1SideLength.x, t1v.y + t1SideLength.y, t1v.y - t1SideLength.y,
 				t2v.x - t2SideLength.x, t2v.x + t2SideLength.x, t2v.y + t2SideLength.y, t2v.y - t2SideLength.y)) {
 
+				
+
 				if (components[i].first == 2) {
 					glm::vec3 temp{ components[i].second.GetVelocity() };
 					if (scene->GetEntity(components[j].first).GetTag() == "wall") {
@@ -60,7 +62,7 @@ void PhysicsSystem::Update(float timeStep) {
 						temp.x = -temp.x;
 					}
 					components[i].second.SetVelocity(temp);
-				}				
+				}
 				else if (components[j].first == 2) {
 					glm::vec3 temp{ components[j].second.GetVelocity() };
 					if (scene->GetEntity(components[i].first).GetTag() == "wall") {

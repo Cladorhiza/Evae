@@ -6,9 +6,10 @@ void AIControllerPaddleSystem::AddComponent(uint32_t id, float paddleSpeed, floa
 
 }
 
-void AIControllerPaddleSystem::Init(Scene* scene) {
-
-	this->scene = scene;
+void AIControllerPaddleSystem::Init(TransformSystem* transformSystem) {
+	ballTransform = &transformSystem->GetTransformComponent(2);
+	this->transformSystem = transformSystem;
+	
 }
 
 void AIControllerPaddleSystem::Update(float deltaTime) {
@@ -16,7 +17,7 @@ void AIControllerPaddleSystem::Update(float deltaTime) {
 	for (const auto& comp : components) {
 
 		glm::vec3 translation(0.f);
-		TransformComponent& t = scene->transformSystem.GetTransformComponent(comp.first);
+		TransformComponent& t = transformSystem->GetTransformComponent(comp.first);
 
 		//if below y value of ball, move up
 		

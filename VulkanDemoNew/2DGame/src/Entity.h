@@ -14,6 +14,7 @@ public:
 	static const uint32_t FLAG_TRANSFORM_COMPONENT = 0x00000001;
 	static const uint32_t FLAG_SPRITE_COMPONENT = 0x00000002;
 	
+	
 
 	Entity();
 	Entity(uint32_t id);

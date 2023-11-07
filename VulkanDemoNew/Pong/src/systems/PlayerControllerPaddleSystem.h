@@ -10,11 +10,11 @@ private:
 
 	std::vector<std::pair<uint32_t, PlayerControllerPaddleComponent>> components;
 	InputManager* inputManager;
-	Scene* scene;
+	TransformSystem* transformSystem;
 public:
 	void AddComponent(uint32_t id, int keyUp, int keyDown, float paddleSpeed, float topBound, float bottomBound);
 
-	void Init(InputManager* inputManager, Scene* scene);
+	void Init(InputManager* inputManager, TransformSystem* transformSystem);
 	void Update(float deltaTime);
 
 

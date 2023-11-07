@@ -3,8 +3,51 @@
 #include "systems/PlayerControllerPaddleSystem.h"
 #include "components/AIControllerPaddleComponent.h"
 #include "systems/AIControllerPaddleSystem.h"
+#include "systems/ScoringSystem.h"
 
 #include <iostream>
+
+
+struct FrameTimer {
+public:
+
+    int32_t frameCount;
+    double deltaTime;
+
+private:
+    
+    std::chrono::time_point<std::chrono::high_resolution_clock> start;
+    std::chrono::time_point<std::chrono::high_resolution_clock> end;
+    std::chrono::duration<float> elapsed;
+    double cumulativeDelta;
+
+public:
+
+    FrameTimer()
+        :frameCount(0), deltaTime(0.0), cumulativeDelta(0.0), elapsed(), start(), end()
+    {
+
+    }
+
+    void FrameStart() {
+        start = std::chrono::high_resolution_clock::now();
+    }
+
+    void FrameEnd() {
+        end = std::chrono::high_resolution_clock::now();
+        elapsed = end - start;
+        deltaTime = elapsed.count();
+        cumulativeDelta += deltaTime;
+
+        frameCount++;
+        if (cumulativeDelta > std::chrono::seconds(1).count()) {
+            cumulativeDelta -= std::chrono::seconds(1).count();
+            std::cout << frameCount << std::endl;
+            frameCount = 0;
+        }
+    }
+
+};
 
 int main()
 {
@@ -14,7 +57,14 @@ int main()
     Scene scene;
 
     //load rendering framework
-    renderer.Init();
+    try {
+        renderer.Init();
+
+    }
+    catch (std::exception& e) {
+        std::cout << e.what();
+        std::getchar();
+    }
 
     Window window{ renderer.GetWindow() };
     Camera camera(window);
@@ -22,10 +72,12 @@ int main()
     scene.Init(&renderer);
 
     PlayerControllerPaddleSystem paddleSystem;
-    paddleSystem.Init(&inputManager, &scene);
+    paddleSystem.Init(&inputManager, &scene.transformSystem);
     AIControllerPaddleSystem aiPaddleSystem;
-    aiPaddleSystem.Init(&scene);
+    aiPaddleSystem.Init(&scene.transformSystem);
     PhysicsSystem physicsSystem(&scene.transformSystem, &scene);
+    ScoringSystem scoreSystem;
+
 
     uint32_t entityIds[10]{ 0 };
     for (int i{ 0 }; i < 10; i++) {
@@ -41,7 +93,6 @@ int main()
     scene.transformSystem.GetTransformComponent(2).SetScale(glm::vec3(0.5f, 0.5f, 1.f));
     physicsSystem.AddPhysicsComponent(2);
     physicsSystem.GetComponent(2).SetVelocity(glm::vec3(-3.f, 1.f, 0.f));
-    //paddleSystem.AddComponent(2, GLFW_KEY_W, GLFW_KEY_S, 5.f, 4.25f, -4.25f);
     
     
     //background sprite
@@ -81,36 +132,40 @@ int main()
     scene.transformSystem.GetTransformComponent(7).SetScale(glm::vec3(20.f, .5f, 1.f));
     scene.transformSystem.GetTransformComponent(7).SetPosition(glm::vec3(0.f, -4.5f, 0.f));
     physicsSystem.AddPhysicsComponent(7);
+    
+    //score collider for left
+    scene.GetEntity(8).SetTag("scoreLeft");
+    scene.transformSystem.GetTransformComponent(8).SetScale(glm::vec3(1.f, 10.f, 1.f));
+    scene.transformSystem.GetTransformComponent(8).SetPosition(glm::vec3(-9.f, 0.f, 0.f));
+    physicsSystem.AddPhysicsComponent(8);
+    //score collider for right
+    scene.GetEntity(9).SetTag("scoreRight");
+    scene.transformSystem.GetTransformComponent(9).SetScale(glm::vec3(1.f, 10.f, 1.f));
+    scene.transformSystem.GetTransformComponent(9).SetPosition(glm::vec3(9.f, 0.f, 0.f));
+    physicsSystem.AddPhysicsComponent(9);
 
 
 
     for (int i{ 0 }; i < 10; i++) {
         std::cout << "Entity " << i << ((scene.GetEntity(i).HasTransform()) ? " Has a transform component.\n" : " Has not got a transform component.\n");
     }
-    
-    //delta-time storage
-    std::chrono::time_point<std::chrono::high_resolution_clock> start, end;
-    std::chrono::duration<float> elapsed;
-    //used to test how many frames per second
-    double cumulativeSecond = 0.0;
-    float timeStep = 0.05f;
-    int framesCount = 0;
 
     double degs = 0.0;
 
     bool isOrtho = true;
 
     
-    double cumulativeTime = 0.0f;
+    double physicsTime = 0.0f;
     uint32_t physicsTickRate = 60;
     double recipPhysicsTickRate = 1.0 / physicsTickRate;
     physicsSystem.SetTickRate(physicsTickRate);
 
-
+    FrameTimer frameTimer;
+    
     //main game loop
     while (!window.WindowShouldClose() && (inputManager.GetKeyState(GLFW_KEY_ESCAPE) != GLFW_PRESS)) {
 
-        start = std::chrono::high_resolution_clock::now();
+        frameTimer.FrameStart();
 
         //poll inputs
         window.PollEvents();
@@ -122,20 +177,25 @@ int main()
         }
         
         //game logic update
-        paddleSystem.Update(timeStep);
-        aiPaddleSystem.Update(timeStep);
+        paddleSystem.Update(frameTimer.deltaTime);
+        aiPaddleSystem.Update(frameTimer.deltaTime);
 
 
-        while (cumulativeTime > recipPhysicsTickRate) {
+        while (physicsTime > recipPhysicsTickRate) {
 
             physicsSystem.Update(recipPhysicsTickRate);
-            cumulativeTime -= recipPhysicsTickRate;
+            physicsTime -= recipPhysicsTickRate;
         }
 
-        physicsSystem.GetComponent(2).SetVelocity(physicsSystem.GetComponent(2).GetVelocity() + (glm::vec3(0.01f) * timeStep));
-
+        glm::vec3 newVel{ physicsSystem.GetComponent(2).GetVelocity() };
+        //std::cout << newVel.x << ", " << newVel.y << ", " << newVel.z << "\n";
         
-        camera.Update(timeStep, inputManager);
+        float increment = 0.02f * static_cast<float>(frameTimer.deltaTime);
+        newVel.x *= 1 + increment;
+        newVel.y *= 1 + increment;
+        physicsSystem.GetComponent(2).SetVelocity(newVel);
+        
+        camera.Update(frameTimer.deltaTime, inputManager);
         scene.spriteSystem.Update();
 
         //draw
@@ -146,19 +206,8 @@ int main()
 
 
         //calc delta time
-        end = std::chrono::high_resolution_clock::now();
-        elapsed = end - start;
-        timeStep = elapsed.count();
-        cumulativeTime += elapsed.count();
-
-        //framerate calculation
-        cumulativeSecond += elapsed.count();
-        framesCount++;
-        if (cumulativeSecond > std::chrono::seconds(1).count()) {
-            cumulativeSecond -= std::chrono::seconds(1).count();
-            std::cout << framesCount << std::endl;
-            framesCount = 0;
-        }
+        frameTimer.FrameEnd();
+        physicsTime += frameTimer.deltaTime;
 
     }
     

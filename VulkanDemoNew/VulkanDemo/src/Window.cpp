@@ -50,6 +50,11 @@ std::vector<const char*> Window::GetRequiredExtensions() {
 
     std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
+    for (const auto& s : extensions) {
+
+        std::cout << "REQUIRED EXTENSION: " << s << "\n";
+    }
+
     return extensions;
 }
 
