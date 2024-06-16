@@ -110,7 +110,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Git\VulkanMan\VulkanDemoNew\VulkanDemo\src;C:\Git\VulkanMan\VulkanDemoNew\2DGame\src;$(SolutionDir)VulkanDemo\src\GLFW\include;$(SolutionDir)VulkanDemo\src\Vulkan\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)VulkanDemo\src;$(SolutionDir)2DGame\src;$(SolutionDir)VulkanDemo\src\GLFW\include;$(SolutionDir)VulkanDemo\src\Vulkan\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
