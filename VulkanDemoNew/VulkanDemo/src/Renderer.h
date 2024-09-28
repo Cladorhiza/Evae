@@ -59,7 +59,7 @@ private:
     const uint32_t COMMAND_BUFFER_ID_GRAPHICS_RENDER = 0;
     const uint32_t COMMAND_BUFFER_ID_SPRITES_RENDER = 1;
     const std::vector<uint32_t> RECT_INDICES{ 1,2,0,3,0,2 };
-    const std::filesystem::path shaderPath = "../VulkanDemo/res/shaders/";
+    const std::filesystem::path shaderPath;
 
     Vertex v1{ glm::vec3(-0.5f, -0.5f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(0.f, 1.f) };
     Vertex v2{ glm::vec3(0.5f, -0.5f, 0.f),glm::vec3(1.f, 1.f, 1.f), glm::vec2(1.f, 1.f) };
@@ -133,6 +133,7 @@ private:
 
 public:
 
+    Renderer(std::string shaderPath);
     ~Renderer();
 
     Window& GetWindow() { return GLFWwindow; }

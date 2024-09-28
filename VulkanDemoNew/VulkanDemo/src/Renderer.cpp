@@ -40,6 +40,12 @@ void Renderer::Init() {
     InitVulkan();
 }
 
+Renderer::Renderer(std::string shaderPath)
+    :shaderPath(shaderPath)
+{
+
+}
+
 Renderer::~Renderer() {
 
     if (enableValidationLayers) {

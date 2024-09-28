@@ -52,7 +52,7 @@ public:
 int main()
 {
 
-    Renderer renderer;
+    Renderer renderer("../VulkanDemo/res/shaders/");
     InputManager inputManager;
     Scene scene;
 
